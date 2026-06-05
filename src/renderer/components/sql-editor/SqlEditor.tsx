@@ -3,7 +3,8 @@ import { Button, Space, Typography, Table, Tabs, message } from 'antd'
 import {
   PlaySquareOutlined,
   ReloadOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  StopOutlined
 } from '@ant-design/icons'
 import { EditorView, basicSetup } from 'codemirror'
 import { sql, MySQL } from '@codemirror/lang-sql'
@@ -24,6 +25,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
   const viewRef = useRef<EditorView | null>(null)
   const [results, setResults] = useState<SQLResult[]>([])
   const [running, setRunning] = useState(false)
+  const [activeQueryId, setActiveQueryId] = useState<string | null>(null)
   const [activeResultTab, setActiveResultTab] = useState('results')
   const { setStatusText } = useUIStore()
 
@@ -86,8 +88,11 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
     }
 
     setRunning(true)
+    let queryId: string | undefined
     try {
-      const result = await sqlApi.execute(connId, sql)
+      queryId = await sqlApi.registerQuery(connId)
+      setActiveQueryId(queryId)
+      const result = await sqlApi.execute(connId, sql, queryId)
       setResults((prev) => [result, ...prev])
       setActiveResultTab('results')
       setStatusText(
@@ -95,12 +100,26 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
           `查询完成 | ${result.rows.length} 行 | ${result.executionTime}ms`
       )
     } catch (err) {
-      message.error(`执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
-      setStatusText(`执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      if (err instanceof Error && err.message === '查询已取消') {
+        setStatusText('查询已取消')
+      } else {
+        message.error(`执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
+        setStatusText(`执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      }
     } finally {
       setRunning(false)
+      setActiveQueryId(null)
     }
   }, [connId, getCurrentSql, setStatusText])
+
+  const handleCancel = useCallback(async () => {
+    if (activeQueryId) {
+      await sqlApi.cancel(connId, activeQueryId)
+      setActiveQueryId(null)
+      setRunning(false)
+      setStatusText('查询已取消')
+    }
+  }, [connId, activeQueryId, setStatusText])
 
   const clearResults = () => {
     setResults([])
@@ -170,6 +189,16 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
           >
             执行 (Ctrl+Enter)
           </Button>
+          {running && (
+            <Button
+              danger
+              icon={<StopOutlined />}
+              onClick={handleCancel}
+              size="small"
+            >
+              取消
+            </Button>
+          )}
           <Button
             icon={<DeleteOutlined />}
             onClick={clearResults}

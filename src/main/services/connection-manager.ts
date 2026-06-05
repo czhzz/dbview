@@ -9,11 +9,18 @@ interface PoolEntry {
   lastUsedAt: number
 }
 
+interface QueryEntry {
+  controller: AbortController
+  startedAt: number
+}
+
 export class ConnectionManager {
   private pools = new Map<string, PoolEntry>()
   private store: ConnectionStore
   private idleTimer: ReturnType<typeof setInterval> | null = null
   private readonly IDLE_TIMEOUT = 30 * 60 * 1000 // 30 minutes
+  private activeQueries = new Map<string, QueryEntry>()
+  private queryCounter = 0
 
   constructor(store: ConnectionStore) {
     this.store = store
@@ -64,6 +71,10 @@ export class ConnectionManager {
   }
 
   async closeAll(): Promise<void> {
+    // Cancel all active queries
+    for (const [qid] of this.activeQueries) {
+      this.cancelQuery(qid)
+    }
     for (const [id] of this.pools) {
       await this.disconnect(id)
     }
@@ -71,6 +82,37 @@ export class ConnectionManager {
       clearInterval(this.idleTimer)
       this.idleTimer = null
     }
+  }
+
+  // Query cancellation support
+  registerQuery(connId: string): string {
+    const controller = new AbortController()
+    const queryId = `q-${this.queryCounter++}-${Date.now()}`
+    this.activeQueries.set(queryId, { controller, startedAt: Date.now() })
+
+    // Auto-cleanup after 5 minutes
+    setTimeout(() => {
+      this.activeQueries.delete(queryId)
+    }, 5 * 60 * 1000)
+
+    return queryId
+  }
+
+  cancelQuery(queryId: string): boolean {
+    const entry = this.activeQueries.get(queryId)
+    if (!entry) return false
+    entry.controller.abort()
+    this.activeQueries.delete(queryId)
+    return true
+  }
+
+  getAbortSignal(queryId: string): AbortSignal | undefined {
+    const entry = this.activeQueries.get(queryId)
+    return entry?.controller.signal
+  }
+
+  cleanupQuery(queryId: string): void {
+    this.activeQueries.delete(queryId)
   }
 
   private startIdleChecker(): void {

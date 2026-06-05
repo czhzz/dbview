@@ -25,7 +25,8 @@ export interface ElectronAPI {
     query: (connId: string, params: PaginationQuery) => Promise<PaginationResult>
   }
   sql: {
-    execute: (connId: string, sql: string) => Promise<SQLResult>
-    cancel: (connId: string, queryId: string) => Promise<void>
+    execute: (connId: string, sql: string, queryId?: string) => Promise<SQLResult>
+    registerQuery: (connId: string) => Promise<string>
+    cancel: (connId: string, queryId: string) => Promise<{ success: boolean }>
   }
 }

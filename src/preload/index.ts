@@ -25,7 +25,8 @@ const api: ElectronAPI = {
     query: (connId, params) => ipcRenderer.invoke('data:query', connId, params)
   },
   sql: {
-    execute: (connId, sql) => ipcRenderer.invoke('sql:execute', connId, sql),
+    execute: (connId, sql, queryId?) => ipcRenderer.invoke('sql:execute', connId, sql, queryId),
+    registerQuery: (connId) => ipcRenderer.invoke('sql:registerQuery', connId),
     cancel: (connId, queryId) => ipcRenderer.invoke('sql:cancel', connId, queryId)
   }
 }

@@ -42,6 +42,7 @@ export const dataApi = {
 }
 
 export const sqlApi = {
-  execute: (connId: string, sql: string) => getAPI().sql.execute(connId, sql),
+  execute: (connId: string, sql: string, queryId?: string) => getAPI().sql.execute(connId, sql, queryId),
+  registerQuery: (connId: string) => getAPI().sql.registerQuery(connId),
   cancel: (connId: string, queryId: string) => getAPI().sql.cancel(connId, queryId)
 }

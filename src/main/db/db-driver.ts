@@ -16,7 +16,7 @@ export interface DatabaseDriver {
   getDDL(table: string, schema?: string): Promise<string>
 
   // Data operations
-  executeQuery(sql: string, params?: unknown[]): Promise<SQLResult>
+  executeQuery(sql: string, params?: unknown[], signal?: AbortSignal): Promise<SQLResult>
   queryPage(table: string, options: PaginationQuery): Promise<PaginationResult>
 }
 export type { ConnectionConfig, TableInfo, ViewInfo, ColumnInfo, IndexInfo, PaginationQuery, PaginationResult, SQLResult }

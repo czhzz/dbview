@@ -1,7 +1,7 @@
 export interface ConnectionConfig {
   id: string
   name: string
-  type: 'mysql' | 'oracle'
+  type: 'mysql' | 'postgresql' | 'sqlite' | 'oracle'
   host: string
   port: number
   username: string

@@ -37,6 +37,7 @@ export class ConnectionStore {
         password_encrypted TEXT NOT NULL,
         database_name TEXT,
         ssl INTEGER DEFAULT 0,
+        oracle_service_name TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )
@@ -95,7 +96,7 @@ export class ConnectionStore {
   list(): ConnectionConfig[] {
     const stmt = this.db!.prepare(
       `SELECT id, name, type, host, port, username, password_encrypted,
-              database_name, ssl, created_at, updated_at
+              database_name, ssl, oracle_service_name, created_at, updated_at
        FROM connections ORDER BY updated_at DESC`
     )
     const rows: ConnectionConfig[] = []
@@ -104,13 +105,14 @@ export class ConnectionStore {
       rows.push({
         id: r.id as string,
         name: r.name as string,
-        type: r.type as 'mysql' | 'oracle',
+        type: r.type as ConnectionConfig['type'],
         host: r.host as string,
         port: r.port as number,
         username: r.username as string,
         password: this.decrypt(r.password_encrypted as string),
         database: (r.database_name as string) || undefined,
         ssl: (r.ssl as number) === 1,
+        oracleServiceName: (r.oracle_service_name as string) || undefined,
         createdAt: r.created_at as number,
         updatedAt: r.updated_at as number
       })
@@ -122,7 +124,7 @@ export class ConnectionStore {
   getById(id: string): ConnectionConfig | null {
     const stmt = this.db!.prepare(
       `SELECT id, name, type, host, port, username, password_encrypted,
-              database_name, ssl, created_at, updated_at
+              database_name, ssl, oracle_service_name, created_at, updated_at
        FROM connections WHERE id = ?`
     )
     stmt.bind([id])
@@ -132,13 +134,14 @@ export class ConnectionStore {
       return {
         id: r.id as string,
         name: r.name as string,
-        type: r.type as 'mysql' | 'oracle',
+        type: r.type as ConnectionConfig['type'],
         host: r.host as string,
         port: r.port as number,
         username: r.username as string,
         password: this.decrypt(r.password_encrypted as string),
         database: (r.database_name as string) || undefined,
         ssl: (r.ssl as number) === 1,
+        oracleServiceName: (r.oracle_service_name as string) || undefined,
         createdAt: r.created_at as number,
         updatedAt: r.updated_at as number
       }
@@ -153,8 +156,8 @@ export class ConnectionStore {
     const passwordEncrypted = this.encrypt(input.password)
 
     this.db!.run(
-      `INSERT INTO connections (id, name, type, host, port, username, password_encrypted, database_name, ssl, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO connections (id, name, type, host, port, username, password_encrypted, database_name, ssl, oracle_service_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.name,
@@ -165,6 +168,7 @@ export class ConnectionStore {
         passwordEncrypted,
         input.database || null,
         input.ssl ? 1 : 0,
+        input.oracleServiceName || null,
         now,
         now
       ]
@@ -180,7 +184,7 @@ export class ConnectionStore {
 
     this.db!.run(
       `UPDATE connections SET name=?, type=?, host=?, port=?, username=?, password_encrypted=?,
-              database_name=?, ssl=?, updated_at=? WHERE id=?`,
+              database_name=?, ssl=?, oracle_service_name=?, updated_at=? WHERE id=?`,
       [
         config.name,
         config.type,
@@ -190,6 +194,7 @@ export class ConnectionStore {
         passwordEncrypted,
         config.database || null,
         config.ssl ? 1 : 0,
+        config.oracleServiceName || null,
         now,
         config.id
       ]

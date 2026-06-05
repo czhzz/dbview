@@ -168,10 +168,33 @@ export class MySQLDriver implements DatabaseDriver {
     return String(rows[0]?.['Create Table'] || '')
   }
 
-  async executeQuery(sql: string, _params?: unknown[]): Promise<SQLResult> {
+  async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {
     const pool = this.getPool()
+
+    if (signal?.aborted) {
+      throw new Error('查询已取消')
+    }
+
     const start = Date.now()
-    const [result] = await pool.query(sql)
+
+    let result: RowDataPacket[] | RowDataPacket[][] | ResultSetHeader
+    if (signal) {
+      const conn = await pool.getConnection()
+      try {
+        signal.addEventListener('abort', () => {
+          conn.destroy().catch(() => {})
+        }, { once: true })
+        ;[result] = await conn.query(sql)
+      } finally {
+        if (!conn.destroyed) {
+          conn.release()
+        }
+      }
+    } else {
+      ;[result] = await pool.query(sql)
+    }
+
+    const executionTime = Date.now() - start
 
     if (Array.isArray(result)) {
       // SELECT query
@@ -180,7 +203,7 @@ export class MySQLDriver implements DatabaseDriver {
       return {
         columns,
         rows: rows as Record<string, unknown>[],
-        executionTime: Date.now() - start
+        executionTime
       }
     } else {
       // INSERT/UPDATE/DELETE
@@ -190,7 +213,7 @@ export class MySQLDriver implements DatabaseDriver {
         rows: [],
         affectedRows: header.affectedRows,
         insertId: header.insertId,
-        executionTime: Date.now() - start,
+        executionTime,
         message: `影响行数: ${header.affectedRows}`
       }
     }

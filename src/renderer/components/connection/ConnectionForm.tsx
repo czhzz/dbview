@@ -13,11 +13,14 @@ interface Props {
 
 const DB_TYPES = [
   { value: 'mysql', label: 'MySQL' },
-  { value: 'oracle', label: 'Oracle (预留)' }
+  { value: 'postgresql', label: 'PostgreSQL' },
+  { value: 'sqlite', label: 'SQLite' },
+  { value: 'oracle', label: 'Oracle' }
 ]
 
 const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loading }) => {
   const [form] = Form.useForm<ConnectionConfigInput>()
+  const dbType = Form.useWatch('type', form)
 
   React.useEffect(() => {
     if (open) {
@@ -30,7 +33,8 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           username: editConfig.username,
           password: editConfig.password,
           database: editConfig.database,
-          ssl: editConfig.ssl
+          ssl: editConfig.ssl,
+          oracleServiceName: editConfig.oracleServiceName
         })
       } else {
         form.resetFields()
@@ -77,52 +81,83 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           label="数据库类型"
           rules={[{ required: true }]}
         >
-          <Select options={DB_TYPES} />
+          <Select options={DB_TYPES} onChange={() => {
+            // Reset port based on type
+            const portMap: Record<string, number> = { mysql: 3306, postgresql: 5432, oracle: 1521 }
+            form.setFieldValue('port', portMap[form.getFieldValue('type')] || 3306)
+          }} />
         </Form.Item>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Form.Item
-            name="host"
-            label="主机地址"
-            rules={[{ required: true, message: '请输入主机地址' }]}
-            style={{ flex: 1 }}
-          >
-            <Input placeholder="127.0.0.1" />
-          </Form.Item>
+        {dbType === 'sqlite' ? (
+          <>
+            <Form.Item
+              name="host"
+              label="文件路径"
+              rules={[{ required: true, message: '请选择或输入 SQLite 文件路径' }]}
+            >
+              <Input placeholder="/path/to/database.db" />
+            </Form.Item>
+            <Form.Item name="ssl" label="打开方式" valuePropName="checked">
+              <Input placeholder="只读模式" disabled />
+            </Form.Item>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Form.Item
+                name="host"
+                label="主机地址"
+                rules={[{ required: true, message: '请输入主机地址' }]}
+                style={{ flex: 1 }}
+              >
+                <Input placeholder="127.0.0.1" />
+              </Form.Item>
 
-          <Form.Item
-            name="port"
-            label="端口"
-            rules={[{ required: true }]}
-            style={{ width: 120 }}
-          >
-            <InputNumber min={1} max={65535} style={{ width: '100%' }} />
-          </Form.Item>
-        </div>
+              <Form.Item
+                name="port"
+                label="端口"
+                rules={[{ required: true }]}
+                style={{ width: 120 }}
+              >
+                <InputNumber min={1} max={65535} style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
 
-        <Form.Item
-          name="username"
-          label="用户名"
-          rules={[{ required: true, message: '请输入用户名' }]}
-        >
-          <Input placeholder="root" />
-        </Form.Item>
+            <Form.Item
+              name="username"
+              label="用户名"
+              rules={[{ required: true, message: '请输入用户名' }]}
+            >
+              <Input placeholder="root" />
+            </Form.Item>
 
-        <Form.Item
-          name="password"
-          label="密码"
-          rules={[{ required: !editConfig, message: '请输入密码' }]}
-        >
-          <Input.Password placeholder={editConfig ? '留空则不修改密码' : ''} />
-        </Form.Item>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: !editConfig, message: '请输入密码' }]}
+            >
+              <Input.Password placeholder={editConfig ? '留空则不修改密码' : ''} />
+            </Form.Item>
 
-        <Form.Item
-          name="database"
-          label="默认数据库"
-          tooltip="可选，连接后默认选中的数据库"
-        >
-          <Input placeholder="留空则连接后选择" />
-        </Form.Item>
+            {dbType === 'oracle' && (
+              <Form.Item
+                name="oracleServiceName"
+                label="服务名 / SID"
+                tooltip="Oracle 连接服务名（如 xe、orcl）"
+              >
+                <Input placeholder="xe" />
+              </Form.Item>
+            )}
+
+            <Form.Item
+              name="database"
+              label={dbType === 'postgresql' ? '默认数据库' : '默认数据库'}
+              tooltip="可选，连接后默认选中的数据库"
+            >
+              <Input placeholder={dbType === 'postgresql' ? 'postgres' : '留空则连接后选择'} />
+            </Form.Item>
+          </>
+        )}
       </Form>
     </Modal>
   )
