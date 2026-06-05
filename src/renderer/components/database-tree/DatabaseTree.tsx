@@ -8,7 +8,9 @@ import {
   KeyOutlined,
   FolderOutlined,
   FolderOpenOutlined,
-  EyeOutlined
+  EyeOutlined,
+  CodeOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
 import { databaseApi, connectionApi } from '../../services/api'
@@ -22,7 +24,9 @@ const iconMap: Record<string, React.ReactNode> = {
   column: <FieldStringOutlined style={{ color: '#fa8c16' }} />,
   index: <KeyOutlined style={{ color: '#eb2f96' }} />,
   folder: <FolderOutlined />,
-  folderOpen: <FolderOpenOutlined />
+  folderOpen: <FolderOpenOutlined />,
+  procedure: <CodeOutlined style={{ color: '#13c2c2' }} />,
+  function: <ThunderboltOutlined style={{ color: '#faad14' }} />
 }
 
 const DatabaseTree: React.FC = () => {
@@ -75,8 +79,11 @@ const DatabaseTree: React.FC = () => {
 
       if (type === 'db') {
         const schema = parts[2]
-        const tables = await databaseApi.getTables(connId, schema)
-        const views = await databaseApi.getViews(connId, schema)
+        const [tables, views, routines] = await Promise.all([
+          databaseApi.getTables(connId, schema),
+          databaseApi.getViews(connId, schema),
+          databaseApi.getRoutines(connId, schema).catch(() => [])
+        ])
         const children: DataNode[] = []
 
         if (tables.length > 0) {
@@ -94,6 +101,30 @@ const DatabaseTree: React.FC = () => {
           children.push({
             key: `folder:views:${connId}:${schema}`,
             title: `视图 (${views.length})`,
+            icon: iconMap.folder,
+            isLeaf: false,
+            connId,
+            itemType: 'folder',
+            selectable: false
+          })
+        }
+        const procedures = routines.filter((r) => r.type === 'PROCEDURE')
+        const functions = routines.filter((r) => r.type === 'FUNCTION')
+        if (procedures.length > 0) {
+          children.push({
+            key: `folder:procedures:${connId}:${schema}`,
+            title: `存储过程 (${procedures.length})`,
+            icon: iconMap.folder,
+            isLeaf: false,
+            connId,
+            itemType: 'folder',
+            selectable: false
+          })
+        }
+        if (functions.length > 0) {
+          children.push({
+            key: `folder:functions:${connId}:${schema}`,
+            title: `函数 (${functions.length})`,
             icon: iconMap.folder,
             isLeaf: false,
             connId,
@@ -135,6 +166,24 @@ const DatabaseTree: React.FC = () => {
               itemType: 'view' as const,
               schema,
               tableName: v.name
+            })
+          }
+        } else if (folderType === 'procedures' || folderType === 'functions') {
+          const routines = await databaseApi.getRoutines(connId, schema).catch(() => [])
+          const filtered = routines.filter((r) =>
+            folderType === 'procedures' ? r.type === 'PROCEDURE' : r.type === 'FUNCTION'
+          )
+          for (const r of filtered) {
+            children.push({
+              key: `routine:${connId}:${schema}:${r.type}:${r.name}`,
+              title: r.name,
+              icon: r.type === 'PROCEDURE' ? iconMap.procedure : iconMap.function,
+              isLeaf: true,
+              connId,
+              itemType: 'routine' as const,
+              schema,
+              routineName: r.name,
+              routineType: r.type
             })
           }
         }
@@ -216,15 +265,33 @@ const DatabaseTree: React.FC = () => {
     setTreeData((prev) => updateTreeNode(prev, key, children))
   }
 
-  // Context menu for table nodes
+  // Context menu for table/routine nodes
   const getContextMenu = (node: DataNode): MenuProps['items'] => {
-    if (node.itemType !== 'table' && node.itemType !== 'view') return undefined
+    if (node.itemType !== 'table' && node.itemType !== 'view' && node.itemType !== 'routine') return undefined
 
     const connId = node.connId
     const tableName = node.tableName
     const schema = node.schema
 
-    const items: MenuProps['items'] = [
+    const items: MenuProps['items'] = []
+
+    if (node.itemType === 'routine') {
+      items.push({
+        key: 'view-definition',
+        label: '查看定义',
+        icon: <CodeOutlined />,
+        onClick: () =>
+          openTab({
+            key: `routine-def:${connId}:${schema}:${node.routineType}:${node.routineName}`,
+            title: `${node.routineName} (${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'})`,
+            type: 'query',
+            connId: connId || ''
+          })
+      })
+      return items
+    }
+
+    items.push(
       {
         key: 'view-data',
         label: '查看数据',
@@ -266,7 +333,6 @@ const DatabaseTree: React.FC = () => {
         key: 'new-query',
         label: '在新查询中打开',
         onClick: () => {
-          const parts = node.key.toString().split(':')
           openTab({
             key: `query:${connId}:${Date.now()}`,
             title: `查询 - ${tableName}`,
@@ -276,7 +342,7 @@ const DatabaseTree: React.FC = () => {
           })
         }
       }
-    ]
+    )
     return items
   }
 

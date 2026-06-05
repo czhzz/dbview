@@ -2,6 +2,18 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { ElectronAPI } from './types'
 
 const api: ElectronAPI = {
+  dialog: {
+    showSaveDialog: (options) => ipcRenderer.invoke('dialog:showSaveDialog', options)
+  },
+  file: {
+    write: (filePath, content, encoding) => ipcRenderer.invoke('file:write', filePath, content, encoding)
+  },
+  history: {
+    add: (entry) => ipcRenderer.invoke('history:add', entry),
+    list: (connId, search, limit) => ipcRenderer.invoke('history:list', connId, search, limit),
+    delete: (id) => ipcRenderer.invoke('history:delete', id),
+    clear: (connId) => ipcRenderer.invoke('history:clear', connId)
+  },
   connection: {
     list: () => ipcRenderer.invoke('connection:list'),
     getById: (id) => ipcRenderer.invoke('connection:getById', id),
@@ -11,7 +23,11 @@ const api: ElectronAPI = {
     test: (config) => ipcRenderer.invoke('connection:test', config),
     connect: (id) => ipcRenderer.invoke('connection:connect', id),
     disconnect: (id) => ipcRenderer.invoke('connection:disconnect', id),
-    getActiveConnections: () => ipcRenderer.invoke('connection:getActiveConnections')
+    getActiveConnections: () => ipcRenderer.invoke('connection:getActiveConnections'),
+    listGroups: () => ipcRenderer.invoke('connection:listGroups'),
+    createGroup: (name) => ipcRenderer.invoke('connection:createGroup', name),
+    renameGroup: (id, name) => ipcRenderer.invoke('connection:renameGroup', id, name),
+    deleteGroup: (id) => ipcRenderer.invoke('connection:deleteGroup', id)
   },
   database: {
     getDatabases: (connId) => ipcRenderer.invoke('database:getDatabases', connId),
@@ -19,7 +35,9 @@ const api: ElectronAPI = {
     getViews: (connId, schema) => ipcRenderer.invoke('database:getViews', connId, schema),
     getColumns: (connId, table, schema) => ipcRenderer.invoke('database:getColumns', connId, table, schema),
     getIndexes: (connId, table, schema) => ipcRenderer.invoke('database:getIndexes', connId, table, schema),
-    getDDL: (connId, table, schema) => ipcRenderer.invoke('database:getDDL', connId, table, schema)
+    getDDL: (connId, table, schema) => ipcRenderer.invoke('database:getDDL', connId, table, schema),
+    getRoutines: (connId, schema) => ipcRenderer.invoke('database:getRoutines', connId, schema),
+    getRoutineDefinition: (connId, name, type, schema) => ipcRenderer.invoke('database:getRoutineDefinition', connId, name, type, schema)
   },
   data: {
     query: (connId, params) => ipcRenderer.invoke('data:query', connId, params)

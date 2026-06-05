@@ -83,3 +83,35 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* ===== Dark theme overrides ===== */
+
+.dark-theme {
+  color-scheme: dark;
+}
+
+.dark-theme .result-table .ant-table-thead > tr > th {
+  background: #1f1f1f;
+}
+
+.dark-theme .result-table .ant-table-tbody > tr > td {
+  background: #141414;
+}
+
+.dark-theme .database-tree {
+  background: #141414;
+}
+
+.dark-theme .connection-card:hover {
+  border-color: #1677ff;
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.2);
+}
+
+/* Dark scrollbar */
+.dark-theme ::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+.dark-theme ::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}

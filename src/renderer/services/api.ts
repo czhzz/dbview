@@ -9,6 +9,25 @@ function getAPI() {
   return window.electronAPI
 }
 
+export const dialogApi = {
+  showSaveDialog: (options: Parameters<typeof getAPI>[0]['dialog']['showSaveDialog'][0]) =>
+    getAPI().dialog.showSaveDialog(options)
+}
+
+export const fileApi = {
+  write: (filePath: string, content: string, encoding?: BufferEncoding) =>
+    getAPI().file.write(filePath, content, encoding)
+}
+
+export const historyApi = {
+  add: (entry: Parameters<typeof getAPI>[0]['history']['add'][0]) =>
+    getAPI().history.add(entry),
+  list: (connId?: string, search?: string, limit?: number) =>
+    getAPI().history.list(connId, search, limit),
+  delete: (id: number) => getAPI().history.delete(id),
+  clear: (connId?: string) => getAPI().history.clear(connId)
+}
+
 export const connectionApi = {
   list: () => getAPI().connection.list(),
   getById: (id: string) => getAPI().connection.getById(id),
@@ -21,7 +40,11 @@ export const connectionApi = {
     getAPI().connection.test(config),
   connect: (id: string) => getAPI().connection.connect(id),
   disconnect: (id: string) => getAPI().connection.disconnect(id),
-  getActiveConnections: () => getAPI().connection.getActiveConnections()
+  getActiveConnections: () => getAPI().connection.getActiveConnections(),
+  listGroups: () => getAPI().connection.listGroups(),
+  createGroup: (name: string) => getAPI().connection.createGroup(name),
+  renameGroup: (id: string, name: string) => getAPI().connection.renameGroup(id, name),
+  deleteGroup: (id: string) => getAPI().connection.deleteGroup(id)
 }
 
 export const databaseApi = {
@@ -33,7 +56,11 @@ export const databaseApi = {
   getIndexes: (connId: string, table: string, schema?: string) =>
     getAPI().database.getIndexes(connId, table, schema),
   getDDL: (connId: string, table: string, schema?: string) =>
-    getAPI().database.getDDL(connId, table, schema)
+    getAPI().database.getDDL(connId, table, schema),
+  getRoutines: (connId: string, schema?: string) =>
+    getAPI().database.getRoutines(connId, schema),
+  getRoutineDefinition: (connId: string, name: string, type: 'PROCEDURE' | 'FUNCTION', schema?: string) =>
+    getAPI().database.getRoutineDefinition(connId, name, type, schema)
 }
 
 export const dataApi = {

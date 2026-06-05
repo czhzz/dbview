@@ -1,14 +1,17 @@
 import React from 'react'
-import { Table, Tag } from 'antd'
-import { KeyOutlined } from '@ant-design/icons'
+import { Table, Tag, Button, Space, Popconfirm } from 'antd'
+import { KeyOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import type { ColumnInfo } from '../../types/database'
 
 interface Props {
   columns: ColumnInfo[]
   loading?: boolean
+  editable?: boolean
+  onEdit?: (col: ColumnInfo) => void
+  onDelete?: (col: ColumnInfo) => void
 }
 
-const ColumnList: React.FC<Props> = ({ columns, loading }) => {
+const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDelete }) => {
   const dataSource = columns.map((col, i) => ({ ...col, _key: i }))
 
   return (
@@ -53,6 +56,42 @@ const ColumnList: React.FC<Props> = ({ columns, loading }) => {
       />
       <Table.Column title="额外" dataIndex="extra" key="extra" width={120} />
       <Table.Column title="注释" dataIndex="comment" key="comment" ellipsis />
+      {editable && (
+        <Table.Column
+          title="操作"
+          key="actions"
+          width={120}
+          render={(_: unknown, record: ColumnInfo) => (
+            <Space size={4}>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => onEdit?.(record)}
+              >
+                编辑
+              </Button>
+              <Popconfirm
+                title={`确认删除列 "${record.name}"？`}
+                description="此操作不可逆"
+                onConfirm={() => onDelete?.(record)}
+                okText="删除"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            </Space>
+          )}
+        />
+      )}
     </Table>
   )
 }

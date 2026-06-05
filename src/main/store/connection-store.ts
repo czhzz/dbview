@@ -8,6 +8,13 @@ import type { ConnectionConfig, ConnectionConfigInput } from '../../renderer/typ
 
 const DB_PATH = path.join(app.getPath('userData'), 'dbview-connections.db')
 
+export interface ConnectionGroup {
+  id: string
+  name: string
+  sortOrder: number
+  createdAt: number
+}
+
 export class ConnectionStore {
   private db: Database | null = null
   private encryptionKey: Buffer | null = null
@@ -38,10 +45,25 @@ export class ConnectionStore {
         database_name TEXT,
         ssl INTEGER DEFAULT 0,
         oracle_service_name TEXT,
+        group_id TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       )
     `)
+    this.db!.run(`
+      CREATE TABLE IF NOT EXISTS connection_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL
+      )
+    `)
+    // Migration: add group_id column if it doesn't exist
+    try {
+      this.db!.run('ALTER TABLE connections ADD COLUMN group_id TEXT')
+    } catch {
+      // Column already exists, ignore
+    }
   }
 
   private save(): void {
@@ -96,7 +118,7 @@ export class ConnectionStore {
   list(): ConnectionConfig[] {
     const stmt = this.db!.prepare(
       `SELECT id, name, type, host, port, username, password_encrypted,
-              database_name, ssl, oracle_service_name, created_at, updated_at
+              database_name, ssl, oracle_service_name, group_id, created_at, updated_at
        FROM connections ORDER BY updated_at DESC`
     )
     const rows: ConnectionConfig[] = []
@@ -113,6 +135,7 @@ export class ConnectionStore {
         database: (r.database_name as string) || undefined,
         ssl: (r.ssl as number) === 1,
         oracleServiceName: (r.oracle_service_name as string) || undefined,
+        groupId: (r.group_id as string) || undefined,
         createdAt: r.created_at as number,
         updatedAt: r.updated_at as number
       })
@@ -124,7 +147,7 @@ export class ConnectionStore {
   getById(id: string): ConnectionConfig | null {
     const stmt = this.db!.prepare(
       `SELECT id, name, type, host, port, username, password_encrypted,
-              database_name, ssl, oracle_service_name, created_at, updated_at
+              database_name, ssl, oracle_service_name, group_id, created_at, updated_at
        FROM connections WHERE id = ?`
     )
     stmt.bind([id])
@@ -142,6 +165,7 @@ export class ConnectionStore {
         database: (r.database_name as string) || undefined,
         ssl: (r.ssl as number) === 1,
         oracleServiceName: (r.oracle_service_name as string) || undefined,
+        groupId: (r.group_id as string) || undefined,
         createdAt: r.created_at as number,
         updatedAt: r.updated_at as number
       }
@@ -156,8 +180,8 @@ export class ConnectionStore {
     const passwordEncrypted = this.encrypt(input.password)
 
     this.db!.run(
-      `INSERT INTO connections (id, name, type, host, port, username, password_encrypted, database_name, ssl, oracle_service_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO connections (id, name, type, host, port, username, password_encrypted, database_name, ssl, oracle_service_name, group_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.name,
@@ -169,6 +193,7 @@ export class ConnectionStore {
         input.database || null,
         input.ssl ? 1 : 0,
         input.oracleServiceName || null,
+        input.groupId || null,
         now,
         now
       ]
@@ -184,7 +209,7 @@ export class ConnectionStore {
 
     this.db!.run(
       `UPDATE connections SET name=?, type=?, host=?, port=?, username=?, password_encrypted=?,
-              database_name=?, ssl=?, oracle_service_name=?, updated_at=? WHERE id=?`,
+              database_name=?, ssl=?, oracle_service_name=?, group_id=?, updated_at=? WHERE id=?`,
       [
         config.name,
         config.type,
@@ -195,6 +220,7 @@ export class ConnectionStore {
         config.database || null,
         config.ssl ? 1 : 0,
         config.oracleServiceName || null,
+        config.groupId || null,
         now,
         config.id
       ]
@@ -204,6 +230,53 @@ export class ConnectionStore {
 
   delete(id: string): void {
     this.db!.run('DELETE FROM connections WHERE id = ?', [id])
+    this.save()
+  }
+
+  // -- Group CRUD --
+
+  listGroups(): ConnectionGroup[] {
+    const stmt = this.db!.prepare(
+      'SELECT id, name, sort_order, created_at FROM connection_groups ORDER BY sort_order ASC, created_at ASC'
+    )
+    const rows: ConnectionGroup[] = []
+    while (stmt.step()) {
+      const r = stmt.getAsObject() as Record<string, unknown>
+      rows.push({
+        id: r.id as string,
+        name: r.name as string,
+        sortOrder: r.sort_order as number,
+        createdAt: r.created_at as number
+      })
+    }
+    stmt.free()
+    return rows
+  }
+
+  createGroup(name: string): ConnectionGroup {
+    const id = uuidv4()
+    const now = Date.now()
+    const maxOrder = this.db!.exec('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM connection_groups')
+    const sortOrder = maxOrder[0]?.values[0]?.[0] as number ?? 0
+
+    this.db!.run(
+      'INSERT INTO connection_groups (id, name, sort_order, created_at) VALUES (?, ?, ?, ?)',
+      [id, name, sortOrder, now]
+    )
+    this.save()
+
+    return { id, name, sortOrder, createdAt: now }
+  }
+
+  renameGroup(id: string, name: string): void {
+    this.db!.run('UPDATE connection_groups SET name = ? WHERE id = ?', [name, id])
+    this.save()
+  }
+
+  deleteGroup(id: string): void {
+    // Move connections in this group to ungrouped
+    this.db!.run('UPDATE connections SET group_id = NULL WHERE group_id = ?', [id])
+    this.db!.run('DELETE FROM connection_groups WHERE id = ?', [id])
     this.save()
   }
 }

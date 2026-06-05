@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Modal, Form, Input, InputNumber, Select } from 'antd'
 import { DatabaseOutlined } from '@ant-design/icons'
-import type { ConnectionConfig, ConnectionConfigInput } from '../../types/connection'
+import { connectionApi } from '../../services/api'
+import type { ConnectionConfig, ConnectionConfigInput, ConnectionGroup } from '../../types/connection'
 
 interface Props {
   open: boolean
@@ -21,6 +22,13 @@ const DB_TYPES = [
 const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loading }) => {
   const [form] = Form.useForm<ConnectionConfigInput>()
   const dbType = Form.useWatch('type', form)
+  const [groups, setGroups] = useState<ConnectionGroup[]>([])
+
+  useEffect(() => {
+    if (open) {
+      connectionApi.listGroups().then(setGroups)
+    }
+  }, [open])
 
   React.useEffect(() => {
     if (open) {
@@ -34,7 +42,8 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           password: editConfig.password,
           database: editConfig.database,
           ssl: editConfig.ssl,
-          oracleServiceName: editConfig.oracleServiceName
+          oracleServiceName: editConfig.oracleServiceName,
+          groupId: editConfig.groupId
         })
       } else {
         form.resetFields()
@@ -74,6 +83,14 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           rules={[{ required: true, message: '请输入连接名称' }]}
         >
           <Input placeholder="例如：本地开发库" />
+        </Form.Item>
+
+        <Form.Item name="groupId" label="分组">
+          <Select
+            allowClear
+            placeholder="无分组"
+            options={groups.map((g) => ({ value: g.id, label: g.name }))}
+          />
         </Form.Item>
 
         <Form.Item

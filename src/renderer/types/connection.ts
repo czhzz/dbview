@@ -9,8 +9,16 @@ export interface ConnectionConfig {
   database?: string
   oracleServiceName?: string
   ssl?: boolean
+  groupId?: string
   createdAt: number
   updatedAt: number
+}
+
+export interface ConnectionGroup {
+  id: string
+  name: string
+  sortOrder: number
+  createdAt: number
 }
 
 export type ConnectionConfigInput = Omit<ConnectionConfig, 'id' | 'createdAt' | 'updatedAt'>

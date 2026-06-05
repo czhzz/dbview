@@ -1,6 +1,6 @@
 import { Pool, types as pgTypes } from 'pg'
 import type { PoolConfig, QueryResult } from 'pg'
-import type { DatabaseDriver } from './db-driver'
+import type { DatabaseDriver, RoutineInfo } from './db-driver'
 import type { ConnectionConfig } from '../../renderer/types/connection'
 import type {
   TableInfo,
@@ -244,6 +244,46 @@ export class PostgreSQLDriver implements DatabaseDriver {
     }
 
     return ddl
+  }
+
+  async getRoutines(schema?: string): Promise<RoutineInfo[]> {
+    const schemaName = schema || 'public'
+    const result = await this.getPool().query<{
+      routine_name: string
+      routine_type: string
+      return_type: string | null
+    }>(
+      `SELECT p.proname AS routine_name,
+              CASE p.prokind
+                WHEN 'p' THEN 'PROCEDURE'
+                WHEN 'f' THEN 'FUNCTION'
+                WHEN 'a' THEN 'FUNCTION'
+                WHEN 'w' THEN 'FUNCTION'
+              END AS routine_type,
+              COALESCE(pg_get_function_result(p.oid), '') AS return_type
+       FROM pg_proc p
+       JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = $1
+       ORDER BY p.proname`,
+      [schemaName]
+    )
+    return result.rows.map((r) => ({
+      name: r.routine_name,
+      type: r.routine_type as 'PROCEDURE' | 'FUNCTION',
+      returnType: r.return_type || undefined
+    }))
+  }
+
+  async getRoutineDefinition(name: string, _type: 'PROCEDURE' | 'FUNCTION', schema?: string): Promise<string> {
+    const schemaName = schema || 'public'
+    const result = await this.getPool().query<{ definition: string | null }>(
+      `SELECT pg_get_functiondef(p.oid) AS definition
+       FROM pg_proc p
+       JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = $1 AND p.proname = $2`,
+      [schemaName, name]
+    )
+    return result.rows[0]?.definition || ''
   }
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {

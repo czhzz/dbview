@@ -61,4 +61,21 @@ export function registerConnectionIpc(
   ipcMain.handle('connection:getActiveConnections', async () => {
     return manager.getActiveConnectionIds()
   })
+
+  // Group management
+  ipcMain.handle('connection:listGroups', async () => {
+    return store.listGroups()
+  })
+
+  ipcMain.handle('connection:createGroup', async (_event, name: string) => {
+    return store.createGroup(name)
+  })
+
+  ipcMain.handle('connection:renameGroup', async (_event, id: string, name: string) => {
+    store.renameGroup(id, name)
+  })
+
+  ipcMain.handle('connection:deleteGroup', async (_event, id: string) => {
+    store.deleteGroup(id)
+  })
 }

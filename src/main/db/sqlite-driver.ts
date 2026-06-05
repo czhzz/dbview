@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import type { Database as DatabaseType, Statement } from 'better-sqlite3'
 import path from 'path'
-import type { DatabaseDriver } from './db-driver'
+import type { DatabaseDriver, RoutineInfo } from './db-driver'
 import type { ConnectionConfig } from '../../renderer/types/connection'
 import type {
   TableInfo,
@@ -172,6 +172,16 @@ export class SQLiteDriver implements DatabaseDriver {
     }
 
     return `-- DDL not available for table: ${table}`
+  }
+
+  async getRoutines(_schema?: string): Promise<RoutineInfo[]> {
+    // SQLite does not support stored procedures or functions
+    return []
+  }
+
+  async getRoutineDefinition(_name: string, _type: 'PROCEDURE' | 'FUNCTION', _schema?: string): Promise<string> {
+    // SQLite does not support stored procedures or functions
+    return ''
   }
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {

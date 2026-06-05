@@ -74,3 +74,10 @@ export interface SQLResult {
   executionTime: number
   message?: string
 }
+
+export interface RoutineInfo {
+  name: string
+  type: 'PROCEDURE' | 'FUNCTION'
+  returnType?: string
+  definition?: string
+}

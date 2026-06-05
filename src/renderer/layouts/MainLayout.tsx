@@ -1,6 +1,6 @@
 import React from 'react'
-import { Tabs, Button, Typography } from 'antd'
-import { PlusOutlined, CloseOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { Tabs, Button, Typography, Dropdown } from 'antd'
+import { PlusOutlined, CloseOutlined, DatabaseOutlined, GlobalOutlined, BulbOutlined } from '@ant-design/icons'
 import { useUIStore } from '../stores/uiStore'
 import DatabaseTree from '../components/database-tree/DatabaseTree'
 import { useConnectionStore } from '../stores/connectionStore'
@@ -9,6 +9,9 @@ import DataTable from '../components/data-table/DataTable'
 import StructurePage from '../pages/StructurePage'
 import SqlEditor from '../components/sql-editor/SqlEditor'
 import { createNewTab, useEditorStore } from '../stores/editorStore'
+import { useTranslation } from 'react-i18next'
+import { setLanguage, getCurrentLanguage } from '../i18n'
+import { useTheme, type ThemeMode } from '../hooks/useTheme'
 
 const MainLayout: React.FC = () => {
   const {
@@ -96,6 +99,14 @@ const MainLayout: React.FC = () => {
       closeTab(targetKey as string)
     }
   }
+
+  const { mode: themeMode, setMode: setThemeMode } = useTheme()
+
+  const themeMenuItems = [
+    { key: 'light', label: '☀️ 浅色', disabled: themeMode === 'light' },
+    { key: 'dark', label: '🌙 深色', disabled: themeMode === 'dark' },
+    { key: 'system', label: '💻 跟随系统', disabled: themeMode === 'system' }
+  ]
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#fff' }}>
@@ -195,12 +206,40 @@ const MainLayout: React.FC = () => {
           background: '#fafafa',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           padding: '0 12px',
           fontSize: 11,
           color: '#999'
         }}
       >
-        {statusText || '就绪'}
+        <span>{statusText || '就绪'}</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <Dropdown
+            menu={{
+              items: themeMenuItems,
+              onClick: ({ key }) => setThemeMode(key as ThemeMode)
+            }}
+            trigger={['click']}
+          >
+            <Button type="text" size="small" style={{ fontSize: 11, color: '#999', height: 20, padding: '0 4px' }}>
+              <BulbOutlined /> {themeMode === 'dark' ? '深色' : themeMode === 'light' ? '浅色' : '自动'}
+            </Button>
+          </Dropdown>
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'zh', label: '中文', disabled: getCurrentLanguage() === 'zh' },
+                { key: 'en', label: 'English', disabled: getCurrentLanguage() === 'en' }
+              ],
+              onClick: ({ key }) => setLanguage(key)
+            }}
+            trigger={['click']}
+          >
+            <Button type="text" size="small" style={{ fontSize: 11, color: '#999', height: 20, padding: '0 4px' }}>
+              <GlobalOutlined /> {getCurrentLanguage() === 'zh' ? '中' : 'EN'}
+            </Button>
+          </Dropdown>
+        </div>
       </div>
     </div>
   )

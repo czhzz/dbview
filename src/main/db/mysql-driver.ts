@@ -1,5 +1,5 @@
 import mysql, { type Pool, type RowDataPacket, type ResultSetHeader } from 'mysql2/promise'
-import type { DatabaseDriver } from './db-driver'
+import type { DatabaseDriver, RoutineInfo } from './db-driver'
 import type { ConnectionConfig } from '../../renderer/types/connection'
 import type {
   TableInfo,
@@ -287,5 +287,31 @@ export class MySQLDriver implements DatabaseDriver {
       columns,
       executionTime: Date.now() - start
     }
+  }
+
+  async getRoutines(schema?: string): Promise<RoutineInfo[]> {
+    const db = schema || this.config?.database || ''
+    const [rows] = await this.getPool().query<RowDataPacket[]>(
+      `SELECT ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER
+       FROM INFORMATION_SCHEMA.ROUTINES
+       WHERE ROUTINE_SCHEMA = ?
+       ORDER BY ROUTINE_TYPE, ROUTINE_NAME`,
+      [db]
+    )
+    return rows.map((r: RowDataPacket) => ({
+      name: String(r.ROUTINE_NAME),
+      type: r.ROUTINE_TYPE === 'FUNCTION' ? 'FUNCTION' as const : 'PROCEDURE' as const,
+      returnType: r.DTD_IDENTIFIER ? String(r.DTD_IDENTIFIER) : undefined
+    }))
+  }
+
+  async getRoutineDefinition(name: string, _type: 'PROCEDURE' | 'FUNCTION', schema?: string): Promise<string> {
+    const db = schema || this.config?.database || ''
+    const [rows] = await this.getPool().query<RowDataPacket[]>(
+      `SELECT ROUTINE_DEFINITION FROM INFORMATION_SCHEMA.ROUTINES
+       WHERE ROUTINE_SCHEMA = ? AND ROUTINE_NAME = ?`,
+      [db, name]
+    )
+    return String(rows[0]?.ROUTINE_DEFINITION || '')
   }
 }

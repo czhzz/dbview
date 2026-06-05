@@ -1,6 +1,6 @@
 import oracledb from 'oracledb'
 import type { Pool, Connection, Result } from 'oracledb'
-import type { DatabaseDriver } from './db-driver'
+import type { DatabaseDriver, RoutineInfo } from './db-driver'
 import type { ConnectionConfig } from '../../renderer/types/connection'
 import type {
   TableInfo,
@@ -280,6 +280,50 @@ export class OracleDriver implements DatabaseDriver {
       }
 
       return ddl
+    } finally {
+      await conn.close()
+    }
+  }
+
+  async getRoutines(schema?: string): Promise<RoutineInfo[]> {
+    const conn = await this.getConnection()
+    try {
+      const schemaName = (schema || this.config?.username || '').toUpperCase()
+      const result = await conn.execute<{
+        object_name: string
+        object_type: string
+      }>(
+        `SELECT o.object_name, o.object_type
+         FROM user_procedures p
+         JOIN user_objects o ON p.object_name = o.object_name
+         WHERE o.object_type IN ('PROCEDURE', 'FUNCTION')
+           AND o.status = 'VALID'
+         ORDER BY o.object_type, o.object_name`,
+        [schemaName]
+      )
+      return result.rows
+        ? result.rows.map((r) => ({
+            name: r.object_name,
+            type: r.object_type as 'PROCEDURE' | 'FUNCTION'
+          }))
+        : []
+    } finally {
+      await conn.close()
+    }
+  }
+
+  async getRoutineDefinition(name: string, _type: 'PROCEDURE' | 'FUNCTION', schema?: string): Promise<string> {
+    const conn = await this.getConnection()
+    try {
+      const schemaName = (schema || this.config?.username || '').toUpperCase()
+      const result = await conn.execute<{ text: string }>(
+        `SELECT text FROM user_source
+         WHERE name = :name
+           AND type = :type
+         ORDER BY line`,
+        [name.toUpperCase(), _type]
+      )
+      return result.rows ? result.rows.map((r) => r.text).join('') : ''
     } finally {
       await conn.close()
     }
