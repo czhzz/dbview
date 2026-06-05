@@ -34,6 +34,7 @@ const DatabaseTree: React.FC = () => {
   const { openTab } = useUIStore()
   const [treeData, setTreeData] = React.useState<DataNode[]>([])
   const [expandedKeys, setExpandedKeys] = React.useState<React.Key[]>([])
+  const prevConnectedRef = React.useRef<Set<string>>(new Set())
 
   // Build root nodes from connections
   React.useEffect(() => {
@@ -47,6 +48,22 @@ const DatabaseTree: React.FC = () => {
     }))
     setTreeData(roots)
   }, [connections])
+
+  // Auto-expand newly connected connections
+  React.useEffect(() => {
+    const prev = prevConnectedRef.current
+    const newlyConnected: React.Key[] = []
+    connectedIds.forEach((id) => {
+      if (!prev.has(id)) {
+        newlyConnected.push(`conn:${id}`)
+      }
+    })
+    prevConnectedRef.current = new Set(connectedIds)
+
+    if (newlyConnected.length > 0) {
+      setExpandedKeys((prev) => [...prev, ...newlyConnected])
+    }
+  }, [connectedIds])
 
   const loadChildren = useCallback(
     async (nodeKey: string): Promise<DataNode[]> => {
@@ -261,8 +278,26 @@ const DatabaseTree: React.FC = () => {
 
   const onLoadData = async (node: DataNode): Promise<void> => {
     const key = String(node.key)
+    const parts = key.split(':')
+    const type = parts[0]
     const children = await loadChildren(key)
     setTreeData((prev) => updateTreeNode(prev, key, children))
+
+    // Auto-expand so users see tables without clicking multiple levels.
+    // Continue for: conn → db → top-level folders (tables/views/procedures/functions)
+    // Stop at: table, columns/indexes folders, views, routines
+    const folderType = type === 'folder' ? parts[1] : null
+    const isTopLevelFolder = folderType && ['tables', 'views', 'procedures', 'functions'].includes(folderType)
+    const isInsideFolder = folderType && ['columns', 'indexes'].includes(folderType)
+
+    if (children.length > 0 && (type === 'conn' || type === 'db' || isTopLevelFolder)) {
+      setExpandedKeys((prev) => {
+        const childKeys = children.map((c) => c.key as string)
+        const existing = new Set(prev)
+        const toAdd = childKeys.filter((k) => !existing.has(k))
+        return toAdd.length > 0 ? [...prev, ...toAdd] : prev
+      })
+    }
   }
 
   // Context menu for table/routine nodes

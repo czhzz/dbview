@@ -58,11 +58,17 @@ export class ConnectionStore {
         created_at INTEGER NOT NULL
       )
     `)
-    // Migration: add group_id column if it doesn't exist
-    try {
-      this.db!.run('ALTER TABLE connections ADD COLUMN group_id TEXT')
-    } catch {
-      // Column already exists, ignore
+    // Migrations: add columns that may be missing in existing databases
+    const migrations = [
+      'ALTER TABLE connections ADD COLUMN oracle_service_name TEXT',
+      'ALTER TABLE connections ADD COLUMN group_id TEXT'
+    ]
+    for (const sql of migrations) {
+      try {
+        this.db!.run(sql)
+      } catch {
+        // Column already exists, ignore
+      }
     }
   }
 
@@ -82,7 +88,9 @@ export class ConnectionStore {
     if (safeStorage.isEncryptionAvailable()) {
       const keyPath = path.join(app.getPath('userData'), '.dbview-key')
       if (fs.existsSync(keyPath)) {
-        this.encryptionKey = fs.readFileSync(keyPath)
+        const encrypted = fs.readFileSync(keyPath)
+        const rawKeyHex = safeStorage.decryptString(encrypted)
+        this.encryptionKey = Buffer.from(rawKeyHex, 'hex')
       } else {
         const rawKey = crypto.randomBytes(32)
         const encrypted = safeStorage.encryptString(rawKey.toString('hex'))
