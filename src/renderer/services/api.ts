@@ -60,7 +60,9 @@ export const databaseApi = {
   getRoutines: (connId: string, schema?: string) =>
     getAPI().database.getRoutines(connId, schema),
   getRoutineDefinition: (connId: string, name: string, type: 'PROCEDURE' | 'FUNCTION', schema?: string) =>
-    getAPI().database.getRoutineDefinition(connId, name, type, schema)
+    getAPI().database.getRoutineDefinition(connId, name, type, schema),
+  getUsers: (connId: string, schema?: string) =>
+    getAPI().database.getUsers(connId, schema)
 }
 
 export const dataApi = {

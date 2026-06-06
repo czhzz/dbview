@@ -1,5 +1,5 @@
 import type { ConnectionConfig, ConnectionConfigInput, ConnectionTestResult, ConnectionGroup } from '../renderer/types/connection'
-import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, TreeNode, PaginationQuery, PaginationResult, SQLResult, RoutineInfo } from '../renderer/types/database'
+import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, TreeNode, UserInfo, PaginationQuery, PaginationResult, SQLResult, RoutineInfo } from '../renderer/types/database'
 
 export interface SaveDialogOptions {
   defaultPath?: string
@@ -53,6 +53,7 @@ export interface ElectronAPI {
     getDDL: (connId: string, table: string, schema?: string) => Promise<string>
     getRoutines: (connId: string, schema?: string) => Promise<RoutineInfo[]>
     getRoutineDefinition: (connId: string, name: string, type: 'PROCEDURE' | 'FUNCTION', schema?: string) => Promise<string>
+    getUsers: (connId: string, schema?: string) => Promise<UserInfo[]>
   }
   data: {
     query: (connId: string, params: PaginationQuery) => Promise<PaginationResult>

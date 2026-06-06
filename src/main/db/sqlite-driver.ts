@@ -8,6 +8,7 @@ import type {
   ViewInfo,
   ColumnInfo,
   IndexInfo,
+  UserInfo,
   PaginationQuery,
   PaginationResult,
   SQLResult
@@ -182,6 +183,11 @@ export class SQLiteDriver implements DatabaseDriver {
   async getRoutineDefinition(_name: string, _type: 'PROCEDURE' | 'FUNCTION', _schema?: string): Promise<string> {
     // SQLite does not support stored procedures or functions
     return ''
+  }
+
+  async getUsers(_schema?: string): Promise<UserInfo[]> {
+    // SQLite does not have user accounts
+    return []
   }
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {

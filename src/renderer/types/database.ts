@@ -75,6 +75,11 @@ export interface SQLResult {
   message?: string
 }
 
+export interface UserInfo {
+  name: string
+  host?: string
+}
+
 export interface RoutineInfo {
   name: string
   type: 'PROCEDURE' | 'FUNCTION'

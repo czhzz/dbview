@@ -7,6 +7,7 @@ import type {
   ViewInfo,
   ColumnInfo,
   IndexInfo,
+  UserInfo,
   PaginationQuery,
   PaginationResult,
   SQLResult
@@ -284,6 +285,13 @@ export class PostgreSQLDriver implements DatabaseDriver {
       [schemaName, name]
     )
     return result.rows[0]?.definition || ''
+  }
+
+  async getUsers(_schema?: string): Promise<UserInfo[]> {
+    const result = await this.getPool().query<{ usename: string }>(
+      'SELECT usename FROM pg_user ORDER BY usename'
+    )
+    return result.rows.map((r) => ({ name: r.usename }))
   }
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {

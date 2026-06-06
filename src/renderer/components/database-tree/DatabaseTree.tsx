@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import { Tree, Dropdown, message } from 'antd'
+import { Tree, Dropdown, message, Popconfirm } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   DatabaseOutlined,
@@ -10,12 +10,23 @@ import {
   FolderOpenOutlined,
   EyeOutlined,
   CodeOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  UserOutlined,
+  FileTextOutlined,
+  ApiOutlined,
+  DisconnectOutlined,
+  EditOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  PlusOutlined
 } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
-import { databaseApi, connectionApi } from '../../services/api'
+import { databaseApi, connectionApi, historyApi } from '../../services/api'
 import { useConnectionStore } from '../../stores/connectionStore'
 import { useUIStore } from '../../stores/uiStore'
+import { createNewTab, useEditorStore } from '../../stores/editorStore'
+import ConnectionForm from '../connection/ConnectionForm'
+import type { ConnectionConfig, ConnectionConfigInput, ConnectionGroup } from '../../types/connection'
 
 const iconMap: Record<string, React.ReactNode> = {
   database: <DatabaseOutlined style={{ color: '#1677ff' }} />,
@@ -26,28 +37,132 @@ const iconMap: Record<string, React.ReactNode> = {
   folder: <FolderOutlined />,
   folderOpen: <FolderOpenOutlined />,
   procedure: <CodeOutlined style={{ color: '#13c2c2' }} />,
-  function: <ThunderboltOutlined style={{ color: '#faad14' }} />
+  function: <ThunderboltOutlined style={{ color: '#faad14' }} />,
+  user: <UserOutlined style={{ color: '#1677ff' }} />,
+  query: <FileTextOutlined style={{ color: '#eb2f96' }} />
+}
+
+const DB_TYPE_LABELS: Record<string, string> = {
+  mysql: 'MySQL',
+  postgresql: 'PostgreSQL',
+  sqlite: 'SQLite',
+  oracle: 'Oracle'
+}
+
+const DB_TYPE_COLORS: Record<string, string> = {
+  mysql: '#1677ff',
+  postgresql: '#52c41a',
+  sqlite: '#fa8c16',
+  oracle: '#eb2f96'
 }
 
 const DatabaseTree: React.FC = () => {
-  const { connections, connectedIds, addConnected } = useConnectionStore()
+  const {
+    connections,
+    connectedIds,
+    addConnected,
+    removeConnected,
+    loadConnections,
+    addConnection,
+    removeConnection,
+    updateConnection
+  } = useConnectionStore()
   const { openTab } = useUIStore()
+  const { addTab } = useEditorStore()
+
   const [treeData, setTreeData] = React.useState<DataNode[]>([])
   const [expandedKeys, setExpandedKeys] = React.useState<React.Key[]>([])
   const prevConnectedRef = React.useRef<Set<string>>(new Set())
 
-  // Build root nodes from connections
+  // Connection form state
+  const [formOpen, setFormOpen] = React.useState(false)
+  const [editConfig, setEditConfig] = React.useState<ConnectionConfig | null>(null)
+  const [formLoading, setFormLoading] = React.useState(false)
+
+  // Groups state
+  const [groups, setGroups] = React.useState<ConnectionGroup[]>([])
+
+  // Load connections and groups on mount
   React.useEffect(() => {
-    const roots: DataNode[] = connections.map((conn) => ({
+    loadConnections()
+    connectionApi.listGroups().then(setGroups).catch(() => {})
+  }, [])
+
+  // Listen for new-connection event from sidebar header button
+  React.useEffect(() => {
+    const handler = () => {
+      setEditConfig(null)
+      setFormOpen(true)
+    }
+    window.addEventListener('dbview:new-connection', handler)
+    return () => window.removeEventListener('dbview:new-connection', handler)
+  }, [])
+
+  // Build root nodes from connections + groups
+  React.useEffect(() => {
+    const groupedConns = new Map<string, ConnectionConfig[]>()
+    const ungroupedConns: ConnectionConfig[] = []
+
+    for (const conn of connections) {
+      if (conn.groupId) {
+        const list = groupedConns.get(conn.groupId) || []
+        list.push(conn)
+        groupedConns.set(conn.groupId, list)
+      } else {
+        ungroupedConns.push(conn)
+      }
+    }
+
+    const roots: DataNode[] = []
+
+    // Add group folders first
+    for (const group of groups) {
+      const groupConns = groupedConns.get(group.id) || []
+      roots.push({
+        key: `group:${group.id}`,
+        title: group.name,
+        icon: iconMap.folder,
+        isLeaf: false,
+        itemType: 'group' as const,
+        groupId: group.id,
+        children: groupConns.map((conn) => buildConnectionNode(conn))
+      })
+    }
+
+    // Add ungrouped connections
+    for (const conn of ungroupedConns) {
+      roots.push(buildConnectionNode(conn))
+    }
+
+    setTreeData(roots)
+  }, [connections, groups])
+
+  const buildConnectionNode = (conn: ConnectionConfig): DataNode => {
+    const isConnected = connectedIds.has(conn.id)
+    return {
       key: `conn:${conn.id}`,
-      title: conn.name,
-      icon: iconMap.database,
+      title: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span>{conn.name}</span>
+          <span style={{
+            fontSize: 10,
+            color: DB_TYPE_COLORS[conn.type] || '#999',
+            background: `${DB_TYPE_COLORS[conn.type] || '#999'}15`,
+            padding: '0 4px',
+            borderRadius: 3,
+            lineHeight: '16px'
+          }}>
+            {DB_TYPE_LABELS[conn.type] || conn.type}
+          </span>
+        </span>
+      ),
+      icon: <DatabaseOutlined style={{ color: isConnected ? '#52c41a' : '#999' }} />,
       isLeaf: false,
       connId: conn.id,
+      connConfig: conn,
       itemType: 'connection' as const
-    }))
-    setTreeData(roots)
-  }, [connections])
+    }
+  }
 
   // Auto-expand newly connected connections
   React.useEffect(() => {
@@ -64,6 +179,101 @@ const DatabaseTree: React.FC = () => {
       setExpandedKeys((prev) => [...prev, ...newlyConnected])
     }
   }, [connectedIds])
+
+  // Connection CRUD handlers
+  const handleCreate = async (values: ConnectionConfigInput) => {
+    setFormLoading(true)
+    try {
+      const config = await connectionApi.create(values)
+      message.success('连接已创建')
+      setFormOpen(false)
+      addConnection(config)
+    } catch (err) {
+      message.error(`创建失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleUpdate = async (values: ConnectionConfigInput) => {
+    if (!editConfig) return
+    setFormLoading(true)
+    try {
+      const updated = {
+        ...editConfig,
+        ...values,
+        password: values.password || editConfig.password,
+        updatedAt: Date.now()
+      }
+      await connectionApi.update(updated)
+      message.success('连接已更新')
+      setFormOpen(false)
+      setEditConfig(null)
+      updateConnection(updated)
+    } catch (err) {
+      message.error(`更新失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await connectionApi.delete(id)
+      message.success('连接已删除')
+      removeConnection(id)
+      if (connectedIds.has(id)) {
+        removeConnected(id)
+      }
+    } catch (err) {
+      message.error(`删除失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleDuplicate = async (id: string) => {
+    try {
+      const config = await connectionApi.getById(id)
+      if (!config) return
+      const { id: _id, createdAt: _c, updatedAt: _u, ...input } = config
+      const cloned = await connectionApi.create({
+        ...input,
+        name: `${config.name} (副本)`
+      })
+      message.success('连接已复制')
+      addConnection(cloned)
+    } catch (err) {
+      message.error(`复制失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleConnect = async (id: string) => {
+    try {
+      await connectionApi.connect(id)
+      addConnected(id)
+      message.success('连接成功')
+    } catch (err) {
+      message.error(`连接失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleDisconnect = async (id: string) => {
+    try {
+      await connectionApi.disconnect(id)
+      removeConnected(id)
+      message.success('已断开连接')
+      // Remove children of this connection node
+      setTreeData((prev) => {
+        return prev.map((node) => {
+          if (node.key === `conn:${id}`) {
+            return { ...node, children: undefined }
+          }
+          return node
+        })
+      })
+    } catch (err) {
+      message.error(`断开失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
 
   const loadChildren = useCallback(
     async (nodeKey: string): Promise<DataNode[]> => {
@@ -103,28 +313,45 @@ const DatabaseTree: React.FC = () => {
         ])
         const children: DataNode[] = []
 
-        if (tables.length > 0) {
-          children.push({
-            key: `folder:tables:${connId}:${schema}`,
-            title: `表 (${tables.length})`,
-            icon: iconMap.folder,
-            isLeaf: false,
-            connId,
-            itemType: 'folder',
-            selectable: false
-          })
-        }
-        if (views.length > 0) {
-          children.push({
-            key: `folder:views:${connId}:${schema}`,
-            title: `视图 (${views.length})`,
-            icon: iconMap.folder,
-            isLeaf: false,
-            connId,
-            itemType: 'folder',
-            selectable: false
-          })
-        }
+        // Always show Tables, Views, Queries, Users (Navicat style)
+        children.push({
+          key: `folder:tables:${connId}:${schema}`,
+          title: `表 (${tables.length})`,
+          icon: iconMap.folder,
+          isLeaf: false,
+          connId,
+          itemType: 'folder',
+          selectable: false
+        })
+        children.push({
+          key: `folder:views:${connId}:${schema}`,
+          title: `视图 (${views.length})`,
+          icon: iconMap.folder,
+          isLeaf: false,
+          connId,
+          itemType: 'folder',
+          selectable: false
+        })
+        children.push({
+          key: `folder:queries:${connId}:${schema}`,
+          title: `查询`,
+          icon: iconMap.folder,
+          isLeaf: false,
+          connId,
+          itemType: 'folder',
+          selectable: false
+        })
+        children.push({
+          key: `folder:users:${connId}:${schema}`,
+          title: `用户`,
+          icon: iconMap.folder,
+          isLeaf: false,
+          connId,
+          itemType: 'folder',
+          selectable: false
+        })
+
+        // Procedures and Functions only if they exist
         const procedures = routines.filter((r) => r.type === 'PROCEDURE')
         const functions = routines.filter((r) => r.type === 'FUNCTION')
         if (procedures.length > 0) {
@@ -183,6 +410,35 @@ const DatabaseTree: React.FC = () => {
               itemType: 'view' as const,
               schema,
               tableName: v.name
+            })
+          }
+        } else if (folderType === 'queries') {
+          const histories = await historyApi.list(connId, undefined, 50)
+          for (const h of histories) {
+            const shortSql = h.sql.length > 60 ? h.sql.substring(0, 60) + '...' : h.sql
+            children.push({
+              key: `query:${connId}:${schema}:${h.id}`,
+              title: shortSql,
+              icon: iconMap.query,
+              isLeaf: true,
+              connId,
+              itemType: 'query' as const,
+              schema,
+              sql: h.sql
+            })
+          }
+        } else if (folderType === 'users') {
+          const users = await databaseApi.getUsers(connId, schema).catch(() => [])
+          for (const u of users) {
+            const displayText = u.host ? `${u.name}@${u.host}` : u.name
+            children.push({
+              key: `user:${connId}:${schema}:${u.name}`,
+              title: displayText,
+              icon: iconMap.user,
+              isLeaf: true,
+              connId,
+              itemType: 'user' as const,
+              schema
             })
           }
         } else if (folderType === 'procedures' || folderType === 'functions') {
@@ -278,31 +534,145 @@ const DatabaseTree: React.FC = () => {
 
   const onLoadData = async (node: DataNode): Promise<void> => {
     const key = String(node.key)
-    const parts = key.split(':')
-    const type = parts[0]
     const children = await loadChildren(key)
     setTreeData((prev) => updateTreeNode(prev, key, children))
-
-    // Auto-expand so users see tables without clicking multiple levels.
-    // Continue for: conn → db → top-level folders (tables/views/procedures/functions)
-    // Stop at: table, columns/indexes folders, views, routines
-    const folderType = type === 'folder' ? parts[1] : null
-    const isTopLevelFolder = folderType && ['tables', 'views', 'procedures', 'functions'].includes(folderType)
-    const isInsideFolder = folderType && ['columns', 'indexes'].includes(folderType)
-
-    if (children.length > 0 && (type === 'conn' || type === 'db' || isTopLevelFolder)) {
-      setExpandedKeys((prev) => {
-        const childKeys = children.map((c) => c.key as string)
-        const existing = new Set(prev)
-        const toAdd = childKeys.filter((k) => !existing.has(k))
-        return toAdd.length > 0 ? [...prev, ...toAdd] : prev
-      })
-    }
   }
 
-  // Context menu for table/routine nodes
-  const getContextMenu = (node: DataNode): MenuProps['items'] => {
-    if (node.itemType !== 'table' && node.itemType !== 'view' && node.itemType !== 'routine') return undefined
+  // Context menus
+  const getContextMenu = (node: DataNode): MenuProps['items'] | undefined => {
+    const itemType = node.itemType as string
+
+    // Connection node context menu
+    if (itemType === 'connection') {
+      const connId = node.connId as string
+      const isConnected = connectedIds.has(connId)
+      const items: MenuProps['items'] = [
+        isConnected
+          ? {
+              key: 'disconnect',
+              label: '断开连接',
+              icon: <DisconnectOutlined />,
+              onClick: () => handleDisconnect(connId)
+            }
+          : {
+              key: 'connect',
+              label: '连接',
+              icon: <ApiOutlined />,
+              onClick: () => handleConnect(connId)
+            },
+        { type: 'divider' },
+        {
+          key: 'edit',
+          label: '编辑连接',
+          icon: <EditOutlined />,
+          onClick: () => {
+            const conn = connections.find((c) => c.id === connId)
+            if (conn) {
+              setEditConfig(conn)
+              setFormOpen(true)
+            }
+          }
+        },
+        {
+          key: 'duplicate',
+          label: '复制连接',
+          icon: <CopyOutlined />,
+          onClick: () => handleDuplicate(connId)
+        },
+        { type: 'divider' },
+        {
+          key: 'delete',
+          label: '删除连接',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => handleDelete(connId)
+        }
+      ]
+      return items
+    }
+
+    // Group node context menu
+    if (itemType === 'group') {
+      const groupId = node.groupId as string
+      const items: MenuProps['items'] = [
+        {
+          key: 'add-connection',
+          label: '新建连接',
+          icon: <PlusOutlined />,
+          onClick: () => {
+            setEditConfig(null)
+            setFormOpen(true)
+          }
+        },
+        {
+          key: 'delete-group',
+          label: '删除分组',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: async () => {
+            try {
+              await connectionApi.deleteGroup(groupId)
+              setGroups((prev) => prev.filter((g) => g.id !== groupId))
+              // Reload connections that were in this group (they become ungrouped)
+              loadConnections()
+              message.success('分组已删除')
+            } catch (err) {
+              message.error(`删除分组失败: ${err instanceof Error ? err.message : '未知错误'}`)
+            }
+          }
+        }
+      ]
+      return items
+    }
+
+    // Database node context menu
+    if (itemType === 'database') {
+      const connId = node.connId as string
+      const schema = node.schema as string
+      const items: MenuProps['items'] = [
+        {
+          key: 'new-query',
+          label: '新建查询',
+          icon: <FileTextOutlined />,
+          onClick: () => {
+            const tab = createNewTab()
+            addTab(tab)
+            openTab({
+              key: `query-${tab.id}`,
+              title: `查询 - ${schema}`,
+              type: 'query',
+              connId,
+              schema
+            })
+          }
+        },
+        {
+          key: 'refresh',
+          label: '刷新',
+          onClick: () => {
+            // Clear children to force reload
+            setTreeData((prev) => updateTreeNode(prev, String(node.key), []))
+            setExpandedKeys((prev) => {
+              const key = String(node.key)
+              // Remove and re-add to trigger reload
+              return prev.filter((k) => k !== key)
+            })
+          }
+        },
+        {
+          key: 'copy-name',
+          label: '复制数据库名',
+          onClick: () => {
+            navigator.clipboard.writeText(schema)
+            message.success('已复制数据库名')
+          }
+        }
+      ]
+      return items
+    }
+
+    // Table / View / Routine context menus
+    if (itemType !== 'table' && itemType !== 'view' && itemType !== 'routine') return undefined
 
     const connId = node.connId
     const tableName = node.tableName
@@ -310,7 +680,7 @@ const DatabaseTree: React.FC = () => {
 
     const items: MenuProps['items'] = []
 
-    if (node.itemType === 'routine') {
+    if (itemType === 'routine') {
       items.push({
         key: 'view-definition',
         label: '查看定义',
@@ -394,6 +764,19 @@ const DatabaseTree: React.FC = () => {
         table: tableName,
         schema
       })
+    } else if (node.itemType === 'query') {
+      // Open query history in SQL editor
+      const connId = node.connId
+      const sql = (node as any).sql as string
+      const tab = createNewTab(sql)
+      addTab(tab)
+      openTab({
+        key: `query-${tab.id}`,
+        title: tab.title,
+        type: 'query',
+        connId: connId || '',
+        schema: node.schema
+      })
     }
   }
 
@@ -403,11 +786,11 @@ const DatabaseTree: React.FC = () => {
     if (menuItems) {
       return (
         <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
-          <span>{node.title as string}</span>
+          <span>{node.title as React.ReactNode}</span>
         </Dropdown>
       )
     }
-    return <span>{node.title as string}</span>
+    return <span>{node.title as React.ReactNode}</span>
   }
 
   return (
@@ -436,6 +819,14 @@ const DatabaseTree: React.FC = () => {
           className="database-tree"
         />
       )}
+
+      <ConnectionForm
+        open={formOpen}
+        editConfig={editConfig}
+        onOk={editConfig ? handleUpdate : handleCreate}
+        onCancel={() => { setFormOpen(false); setEditConfig(null) }}
+        loading={formLoading}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import type { ConnectionConfig } from '../../renderer/types/connection'
-import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, PaginationQuery, PaginationResult, SQLResult } from '../../renderer/types/database'
+import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, UserInfo, PaginationQuery, PaginationResult, SQLResult } from '../../renderer/types/database'
 
 export interface RoutineInfo {
   name: string
@@ -23,9 +23,10 @@ export interface DatabaseDriver {
   getDDL(table: string, schema?: string): Promise<string>
   getRoutines(schema?: string): Promise<RoutineInfo[]>
   getRoutineDefinition(name: string, type: 'PROCEDURE' | 'FUNCTION', schema?: string): Promise<string>
+  getUsers(schema?: string): Promise<UserInfo[]>
 
   // Data operations
   executeQuery(sql: string, params?: unknown[], signal?: AbortSignal): Promise<SQLResult>
   queryPage(table: string, options: PaginationQuery): Promise<PaginationResult>
 }
-export type { ConnectionConfig, TableInfo, ViewInfo, ColumnInfo, IndexInfo, PaginationQuery, PaginationResult, SQLResult }
+export type { ConnectionConfig, TableInfo, ViewInfo, ColumnInfo, IndexInfo, UserInfo, PaginationQuery, PaginationResult, SQLResult }

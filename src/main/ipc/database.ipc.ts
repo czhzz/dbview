@@ -47,4 +47,9 @@ export function registerDatabaseIpc(manager: ConnectionManager): void {
     const driver = await manager.getConnection(connId)
     return driver.getRoutineDefinition(name, type, schema)
   })
+
+  ipcMain.handle('database:getUsers', async (_event, connId: string, schema?: string) => {
+    const driver = await manager.getConnection(connId)
+    return driver.getUsers(schema)
+  })
 }

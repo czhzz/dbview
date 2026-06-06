@@ -7,6 +7,7 @@ import type {
   ViewInfo,
   ColumnInfo,
   IndexInfo,
+  UserInfo,
   PaginationQuery,
   PaginationResult,
   SQLResult
@@ -324,6 +325,18 @@ export class OracleDriver implements DatabaseDriver {
         [name.toUpperCase(), _type]
       )
       return result.rows ? result.rows.map((r) => r.text).join('') : ''
+    } finally {
+      await conn.close()
+    }
+  }
+
+  async getUsers(_schema?: string): Promise<UserInfo[]> {
+    const conn = await this.getConnection()
+    try {
+      const result = await conn.execute<{ username: string }>(
+        'SELECT username FROM all_users ORDER BY username'
+      )
+      return result.rows ? result.rows.map((r) => ({ name: r.username })) : []
     } finally {
       await conn.close()
     }

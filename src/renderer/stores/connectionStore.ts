@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { connectionApi } from '../services/api'
 import type { ConnectionConfig } from '../types/connection'
 
 interface ConnectionState {
@@ -11,6 +12,10 @@ interface ConnectionState {
   addConnected: (id: string) => void
   removeConnected: (id: string) => void
   setLoading: (loading: boolean) => void
+  loadConnections: () => Promise<void>
+  addConnection: (config: ConnectionConfig) => void
+  removeConnection: (id: string) => void
+  updateConnection: (config: ConnectionConfig) => void
 }
 
 export const useConnectionStore = create<ConnectionState>((set) => ({
@@ -32,5 +37,22 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
       next.delete(id)
       return { connectedIds: next }
     }),
-  setLoading: (loading) => set({ loading })
+  setLoading: (loading) => set({ loading }),
+  loadConnections: async () => {
+    set({ loading: true })
+    try {
+      const list = await connectionApi.list()
+      set({ connections: list, loading: false })
+    } catch {
+      set({ loading: false })
+    }
+  },
+  addConnection: (config) =>
+    set((state) => ({ connections: [...state.connections, config] })),
+  removeConnection: (id) =>
+    set((state) => ({ connections: state.connections.filter((c) => c.id !== id) })),
+  updateConnection: (config) =>
+    set((state) => ({
+      connections: state.connections.map((c) => (c.id === config.id ? config : c))
+    }))
 }))

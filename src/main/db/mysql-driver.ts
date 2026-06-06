@@ -6,6 +6,7 @@ import type {
   ViewInfo,
   ColumnInfo,
   IndexInfo,
+  UserInfo,
   PaginationQuery,
   PaginationResult,
   SQLResult
@@ -313,5 +314,20 @@ export class MySQLDriver implements DatabaseDriver {
       [db, name]
     )
     return String(rows[0]?.ROUTINE_DEFINITION || '')
+  }
+
+  async getUsers(_schema?: string): Promise<UserInfo[]> {
+    try {
+      const [rows] = await this.getPool().query<RowDataPacket[]>(
+        'SELECT User, Host FROM mysql.user ORDER BY User'
+      )
+      return rows.map((r: RowDataPacket) => ({
+        name: String(r.User),
+        host: String(r.Host)
+      }))
+    } catch {
+      // May not have privilege to query mysql.user
+      return []
+    }
   }
 }

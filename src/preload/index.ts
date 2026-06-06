@@ -37,7 +37,8 @@ const api: ElectronAPI = {
     getIndexes: (connId, table, schema) => ipcRenderer.invoke('database:getIndexes', connId, table, schema),
     getDDL: (connId, table, schema) => ipcRenderer.invoke('database:getDDL', connId, table, schema),
     getRoutines: (connId, schema) => ipcRenderer.invoke('database:getRoutines', connId, schema),
-    getRoutineDefinition: (connId, name, type, schema) => ipcRenderer.invoke('database:getRoutineDefinition', connId, name, type, schema)
+    getRoutineDefinition: (connId, name, type, schema) => ipcRenderer.invoke('database:getRoutineDefinition', connId, name, type, schema),
+    getUsers: (connId, schema) => ipcRenderer.invoke('database:getUsers', connId, schema)
   },
   data: {
     query: (connId, params) => ipcRenderer.invoke('data:query', connId, params)

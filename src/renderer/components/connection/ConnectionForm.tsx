@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Modal, Form, Input, InputNumber, Select } from 'antd'
+import { Modal, Form, Input, InputNumber, Select, Button } from 'antd'
 import { DatabaseOutlined } from '@ant-design/icons'
 import { connectionApi } from '../../services/api'
+import ConnectionTestBtn from './ConnectionTestBtn'
 import type { ConnectionConfig, ConnectionConfigInput, ConnectionGroup } from '../../types/connection'
 
 interface Props {
@@ -23,6 +24,7 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
   const [form] = Form.useForm<ConnectionConfigInput>()
   const dbType = Form.useWatch('type', form)
   const [groups, setGroups] = useState<ConnectionGroup[]>([])
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -57,6 +59,10 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
     onOk(values)
   }
 
+  const getValues = (): ConnectionConfigInput => {
+    return form.getFieldsValue()
+  }
+
   return (
     <Modal
       title={
@@ -66,11 +72,19 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
         </span>
       }
       open={open}
-      onOk={handleOk}
       onCancel={onCancel}
       confirmLoading={loading}
       width={520}
       destroyOnClose
+      footer={[
+        <ConnectionTestBtn key="test" getValues={getValues} />,
+        <Button key="cancel" onClick={onCancel}>
+          取消
+        </Button>,
+        <Button key="ok" type="primary" loading={loading} onClick={handleOk}>
+          确定
+        </Button>
+      ]}
     >
       <Form
         form={form}

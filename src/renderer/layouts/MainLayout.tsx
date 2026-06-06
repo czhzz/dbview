@@ -4,14 +4,12 @@ import { PlusOutlined, CloseOutlined, DatabaseOutlined, GlobalOutlined, BulbOutl
 import { useUIStore } from '../stores/uiStore'
 import DatabaseTree from '../components/database-tree/DatabaseTree'
 import { useConnectionStore } from '../stores/connectionStore'
-import ConnectionPage from '../pages/ConnectionPage'
 import DataTable from '../components/data-table/DataTable'
 import StructurePage from '../pages/StructurePage'
 import SqlEditor from '../components/sql-editor/SqlEditor'
-import { createNewTab, useEditorStore } from '../stores/editorStore'
-import { useTranslation } from 'react-i18next'
-import { setLanguage, getCurrentLanguage } from '../i18n'
+import { useEditorStore } from '../stores/editorStore'
 import { useTheme, type ThemeMode } from '../hooks/useTheme'
+import { setLanguage, getCurrentLanguage } from '../i18n'
 
 const MainLayout: React.FC = () => {
   const {
@@ -24,7 +22,7 @@ const MainLayout: React.FC = () => {
     statusText
   } = useUIStore()
   const { connections } = useConnectionStore()
-  const { tabs: sqlTabs, addTab, activeTabId } = useEditorStore()
+  const { tabs: sqlTabs } = useEditorStore()
 
   const isResizing = React.useRef(false)
 
@@ -50,23 +48,6 @@ const MainLayout: React.FC = () => {
     document.addEventListener('mouseup', handleMouseUp)
   }
 
-  const handleAddQueryTab = () => {
-    const tab = createNewTab()
-    addTab(tab)
-    if (activeConnection) {
-      useUIStore.getState().openTab({
-        key: `query-${tab.id}`,
-        title: tab.title,
-        type: 'query',
-        connId: activeConnection
-      })
-    }
-  }
-
-  const activeConnection =
-    useConnectionStore.getState().activeConnectionId ||
-    connections[0]?.id
-
   const renderTabContent = (key: string) => {
     const tab = tabs.find((t) => t.key === key)
     if (!tab) return null
@@ -87,7 +68,7 @@ const MainLayout: React.FC = () => {
         )
       }
       default:
-        return <ConnectionPage />
+        return null
     }
   }
 
@@ -136,14 +117,17 @@ const MainLayout: React.FC = () => {
           >
             <Typography.Text strong style={{ fontSize: 13 }}>
               <DatabaseOutlined style={{ marginRight: 6 }} />
-              数据库浏览器
+              连接
             </Typography.Text>
             <Button
               type="text"
               size="small"
               icon={<PlusOutlined />}
-              onClick={handleAddQueryTab}
-              title="新建查询"
+              onClick={() => {
+                // Open connection form via a custom event
+                window.dispatchEvent(new CustomEvent('dbview:new-connection'))
+              }}
+              title="新建连接"
             />
           </div>
           <DatabaseTree />
@@ -163,7 +147,18 @@ const MainLayout: React.FC = () => {
         {/* Right content area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {tabs.length === 0 ? (
-            <ConnectionPage />
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999'
+            }}>
+              <DatabaseOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
+              <div style={{ marginTop: 16, fontSize: 16 }}>欢迎使用 DBView</div>
+              <div style={{ marginTop: 8, fontSize: 13 }}>从左侧选择连接开始使用</div>
+            </div>
           ) : (
             <Tabs
               type="editable-card"
