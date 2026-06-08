@@ -35,12 +35,44 @@ body {
 }
 
 /* Ant Design Tree overrides for database tree */
-.database-tree .ant-tree-node-content-wrapper {
-  font-size: 13px;
+.database-tree {
+  overflow-x: hidden !important;
 }
 
 .database-tree .ant-tree-treenode {
-  padding: 2px 0;
+  padding: 1px 0;
+  flex-wrap: nowrap !important;
+  overflow: hidden;
+  width: 100%;
+}
+
+.database-tree .ant-tree-switcher {
+  flex-shrink: 0;
+  margin-right: 2px !important;
+}
+
+.database-tree .ant-tree-icon__customize {
+  flex-shrink: 0;
+  margin-right: 4px !important;
+}
+
+.database-tree .ant-tree-node-content-wrapper {
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  display: inline-flex !important;
+  align-items: center;
+  padding-left: 0 !important;
+}
+
+.database-tree .ant-tree-node-content-wrapper .ant-tree-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* CodeMirror overrides */
@@ -100,6 +132,11 @@ body {
 
 .dark-theme .database-tree {
   background: #141414;
+}
+
+.dark-theme .database-tree .ant-tree-treenode,
+.dark-theme .database-tree .ant-tree-node-content-wrapper {
+  background: transparent !important;
 }
 
 .dark-theme .connection-card:hover {

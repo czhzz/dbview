@@ -202,15 +202,17 @@ const DatabaseTree: React.FC = () => {
     return {
       key: `conn:${conn.id}`,
       title: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span>{conn.name}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conn.name}</span>
           <span style={{
             fontSize: 10,
             color: DB_TYPE_COLORS[conn.type] || '#999',
             background: `${DB_TYPE_COLORS[conn.type] || '#999'}15`,
             padding: '0 4px',
             borderRadius: 3,
-            lineHeight: '16px'
+            lineHeight: '16px',
+            flexShrink: 0,
+            whiteSpace: 'nowrap'
           }}>
             {DB_TYPE_LABELS[conn.type] || conn.type}
           </span>
@@ -598,15 +600,18 @@ const DatabaseTree: React.FC = () => {
       await connectionApi.disconnect(id)
       removeConnected(id)
       message.success('已断开连接')
-      // Remove children of this connection node
+      const connKey = `conn:${id}`
+      // Remove children of this connection node and collapse it
       setTreeData((prev) => {
         return prev.map((node) => {
-          if (node.key === `conn:${id}`) {
+          if (node.key === connKey) {
             return { ...node, children: undefined }
           }
           return node
         })
       })
+      // Remove this node and all its descendants from expandedKeys
+      setExpandedKeys((prev) => prev.filter((k) => !String(k).startsWith(`conn:${id}:`) && k !== connKey))
     } catch (err) {
       message.error(`断开失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
@@ -616,6 +621,20 @@ const DatabaseTree: React.FC = () => {
     const key = String(node.key)
     const children = await loadChildren(key)
     setTreeData((prev) => updateTreeNode(prev, key, children))
+  }
+
+  // Handle expand: auto-connect when expanding an unconnected connection node
+  const handleExpand = (keys: React.Key[], info: { node: DataNode; expanded: boolean }) => {
+    setExpandedKeys(keys)
+    if (info.expanded) {
+      const key = String(info.node.key)
+      if (key.startsWith('conn:')) {
+        const connId = key.slice(5)
+        if (!connectedIds.has(connId)) {
+          handleConnect(connId)
+        }
+      }
+    }
   }
 
   // Context menus
@@ -832,6 +851,26 @@ const DatabaseTree: React.FC = () => {
   }
 
   const onDoubleClick = (_event: React.MouseEvent, node: DataNode) => {
+    const key = String(node.key)
+    if (node.itemType === 'connection') {
+      const connId = node.connId as string
+      if (!connectedIds.has(connId)) {
+        handleConnect(connId)
+      } else {
+        // Already connected: toggle expand/collapse
+        setExpandedKeys((prev) =>
+          prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+        )
+      }
+      return
+    }
+    // Toggle expand/collapse for non-leaf nodes (database, folder, table, group)
+    if (!node.isLeaf) {
+      setExpandedKeys((prev) =>
+        prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      )
+      return
+    }
     if (node.itemType === 'table' || node.itemType === 'view') {
       const connId = node.connId
       const tableName = node.tableName
@@ -874,7 +913,7 @@ const DatabaseTree: React.FC = () => {
   }
 
   return (
-    <div className="database-tree" style={{ padding: '8px 0', overflow: 'auto', flex: 1 }}>
+    <div className="database-tree" style={{ overflow: 'auto', flex: 1 }}>
       {treeData.length === 0 ? (
         <div
           style={{
@@ -892,7 +931,7 @@ const DatabaseTree: React.FC = () => {
           loadData={onLoadData}
           onDoubleClick={onDoubleClick}
           expandedKeys={expandedKeys}
-          onExpand={(keys) => setExpandedKeys(keys)}
+          onExpand={handleExpand as any}
           showIcon
           blockNode
           defaultExpandParent={false}

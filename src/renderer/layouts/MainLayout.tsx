@@ -155,7 +155,7 @@ const MainLayout: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 borderRight: '1px solid #e8e8e8',
-                background: '#fafafa',
+                background: '#fff',
                 overflow: 'hidden'
               }}
             >
