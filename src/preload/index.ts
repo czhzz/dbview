@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI } from './types'
+import type { ElectronAPI, SqlLogEntry } from './types'
 
 const api: ElectronAPI = {
   dialog: {
@@ -47,6 +47,14 @@ const api: ElectronAPI = {
     execute: (connId, sql, queryId?) => ipcRenderer.invoke('sql:execute', connId, sql, queryId),
     registerQuery: (connId) => ipcRenderer.invoke('sql:registerQuery', connId),
     cancel: (connId, queryId) => ipcRenderer.invoke('sql:cancel', connId, queryId)
+  },
+  sqlLog: {
+    onLog: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent, entry: SqlLogEntry) => callback(entry)
+      ipcRenderer.on('sql-log', handler)
+      return () => ipcRenderer.removeListener('sql-log', handler)
+    },
+    clear: () => ipcRenderer.invoke('sql-log:clear')
   }
 }
 

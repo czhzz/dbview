@@ -6,6 +6,19 @@ export interface SaveDialogOptions {
   filters?: { name: string; extensions: string[] }[]
 }
 
+export interface SqlLogEntry {
+  id: string
+  sql: string
+  connId: string
+  category: 'user' | 'system' | 'metadata'
+  source: string
+  executionTime: number
+  rowCount: number
+  timestamp: number
+  status: 'success' | 'error'
+  error?: string
+}
+
 export interface HistoryEntry {
   id: number
   sql: string
@@ -62,5 +75,9 @@ export interface ElectronAPI {
     execute: (connId: string, sql: string, queryId?: string) => Promise<SQLResult>
     registerQuery: (connId: string) => Promise<string>
     cancel: (connId: string, queryId: string) => Promise<{ success: boolean }>
+  }
+  sqlLog: {
+    onLog: (callback: (entry: SqlLogEntry) => void) => () => void
+    clear: () => Promise<void>
   }
 }

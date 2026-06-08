@@ -75,3 +75,9 @@ export const sqlApi = {
   registerQuery: (connId: string) => getAPI().sql.registerQuery(connId),
   cancel: (connId: string, queryId: string) => getAPI().sql.cancel(connId, queryId)
 }
+
+export const sqlLogApi = {
+  onLog: (callback: Parameters<typeof getAPI>[0]['sqlLog']['onLog'][0]) =>
+    getAPI().sqlLog.onLog(callback),
+  clear: () => getAPI().sqlLog.clear()
+}

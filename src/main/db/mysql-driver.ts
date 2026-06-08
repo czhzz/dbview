@@ -60,13 +60,14 @@ export class MySQLDriver implements DatabaseDriver {
 
   async getDatabases(): Promise<string[]> {
     const [rows] = await this.getPool().query<RowDataPacket[]>('SHOW DATABASES')
-    const all = rows.map((r: RowDataPacket) => r.Database as string)
-    const SYSTEM_DBS = ['information_schema', 'performance_schema', 'sys', 'mysql']
-    const userDbs = all.filter((db) => !SYSTEM_DBS.includes(db))
-    // Fall back to showing system DBs if there are no user databases — otherwise
-    // the sidebar would be empty and users (especially on fresh installs) would
-    // think the app is broken.
-    return userDbs.length > 0 ? userDbs : all
+    return rows.map((r: RowDataPacket) => r.Database as string).sort((a, b) => {
+      // Sort: system databases last
+      const SYSTEM_DBS = ['information_schema', 'performance_schema', 'sys', 'mysql']
+      const aIsSys = SYSTEM_DBS.includes(a) ? 1 : 0
+      const bIsSys = SYSTEM_DBS.includes(b) ? 1 : 0
+      if (aIsSys !== bIsSys) return aIsSys - bIsSys
+      return a.localeCompare(b)
+    })
   }
 
   async getTables(schema?: string): Promise<TableInfo[]> {
@@ -74,7 +75,7 @@ export class MySQLDriver implements DatabaseDriver {
     const [rows] = await this.getPool().query<RowDataPacket[]>(
       `SELECT TABLE_NAME, TABLE_COMMENT, ENGINE, TABLE_ROWS, CREATE_TIME, UPDATE_TIME
        FROM INFORMATION_SCHEMA.TABLES
-       WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'
+       WHERE TABLE_SCHEMA = ? AND TABLE_TYPE IN ('BASE TABLE', 'SYSTEM VIEW')
        ORDER BY TABLE_NAME`,
       [db]
     )
@@ -123,32 +124,37 @@ export class MySQLDriver implements DatabaseDriver {
 
   async getIndexes(table: string, schema?: string): Promise<IndexInfo[]> {
     const db = schema || this.config?.database || ''
-    const [rows] = await this.getPool().query<RowDataPacket[]>(
-      `SHOW INDEX FROM \`${table}\` FROM \`${db}\``
-    )
-    const indexMap = new Map<
-      string,
-      { columns: string[]; unique: boolean; primary: boolean; type: string }
-    >()
-    for (const r of rows) {
-      const name = String(r.Key_name)
-      if (!indexMap.has(name)) {
-        indexMap.set(name, {
-          columns: [],
-          unique: !r.Non_unique,
-          primary: name === 'PRIMARY',
-          type: String(r.Index_type)
-        })
+    try {
+      const [rows] = await this.getPool().query<RowDataPacket[]>(
+        `SHOW INDEX FROM \`${table}\` FROM \`${db}\``
+      )
+      const indexMap = new Map<
+        string,
+        { columns: string[]; unique: boolean; primary: boolean; type: string }
+      >()
+      for (const r of rows) {
+        const name = String(r.Key_name)
+        if (!indexMap.has(name)) {
+          indexMap.set(name, {
+            columns: [],
+            unique: !r.Non_unique,
+            primary: name === 'PRIMARY',
+            type: String(r.Index_type)
+          })
+        }
+        indexMap.get(name)!.columns.push(String(r.Column_name))
       }
-      indexMap.get(name)!.columns.push(String(r.Column_name))
+      return Array.from(indexMap.entries()).map(([name, info]) => ({
+        name,
+        columns: info.columns,
+        unique: info.unique,
+        primary: info.primary,
+        type: info.type
+      }))
+    } catch {
+      // SHOW INDEX may fail for system views (e.g. information_schema)
+      return []
     }
-    return Array.from(indexMap.entries()).map(([name, info]) => ({
-      name,
-      columns: info.columns,
-      unique: info.unique,
-      primary: info.primary,
-      type: info.type
-    }))
   }
 
   async getPrimaryKey(table: string, schema?: string): Promise<string[]> {
@@ -164,10 +170,15 @@ export class MySQLDriver implements DatabaseDriver {
 
   async getDDL(table: string, schema?: string): Promise<string> {
     const db = schema || this.config?.database || ''
-    const [rows] = await this.getPool().query<RowDataPacket[]>(
-      `SHOW CREATE TABLE \`${db}\`.\`${table}\``
-    )
-    return String(rows[0]?.['Create Table'] || '')
+    try {
+      const [rows] = await this.getPool().query<RowDataPacket[]>(
+        `SHOW CREATE TABLE \`${db}\`.\`${table}\``
+      )
+      return String(rows[0]?.['Create Table'] || rows[0]?.['Create View'] || '')
+    } catch {
+      // SHOW CREATE TABLE may fail for system views
+      return `-- 无法获取 ${db}.${table} 的 DDL（系统视图）`
+    }
   }
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {

@@ -1,5 +1,6 @@
 import { ConnectionStore } from '../store/connection-store'
 import { ConnectionManager } from '../services/connection-manager'
+import { SqlLogService } from '../services/sql-log-service'
 import { registerConnectionIpc } from './connection.ipc'
 import { registerDatabaseIpc } from './database.ipc'
 import { registerSqlIpc } from './sql.ipc'
@@ -13,7 +14,11 @@ let manager: ConnectionManager | null = null
 export async function registerAllIpc(): Promise<void> {
   store = new ConnectionStore()
   await store.init()
-  manager = new ConnectionManager(store)
+
+  const logService = new SqlLogService()
+  logService.registerIpc()
+
+  manager = new ConnectionManager(store, logService)
 
   await initHistoryStore()
 

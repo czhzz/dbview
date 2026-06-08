@@ -1,7 +1,9 @@
 import type { DatabaseDriver } from '../db/db-driver'
 import { DriverFactory } from '../db/driver-factory'
+import { DriverLogger } from '../db/driver-logger'
 import { ConnectionStore } from '../store/connection-store'
 import type { ConnectionConfig } from '../../renderer/types/connection'
+import type { SqlLogService } from './sql-log-service'
 
 interface PoolEntry {
   driver: DatabaseDriver
@@ -17,13 +19,15 @@ interface QueryEntry {
 export class ConnectionManager {
   private pools = new Map<string, PoolEntry>()
   private store: ConnectionStore
+  private logService: SqlLogService
   private idleTimer: ReturnType<typeof setInterval> | null = null
   private readonly IDLE_TIMEOUT = 30 * 60 * 1000 // 30 minutes
   private activeQueries = new Map<string, QueryEntry>()
   private queryCounter = 0
 
-  constructor(store: ConnectionStore) {
+  constructor(store: ConnectionStore, logService: SqlLogService) {
     this.store = store
+    this.logService = logService
     this.startIdleChecker()
   }
 
@@ -41,8 +45,9 @@ export class ConnectionManager {
     if (!config) {
       throw new Error(`连接配置不存在: ${connId}`)
     }
-    const driver = DriverFactory.createDriver(config.type)
-    await driver.createPool(config)
+    const rawDriver = DriverFactory.createDriver(config.type)
+    await rawDriver.createPool(config)
+    const driver = new DriverLogger(rawDriver, connId, this.logService)
     this.pools.set(connId, { driver, config, lastUsedAt: Date.now() })
     return driver
   }

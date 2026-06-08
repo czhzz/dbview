@@ -7,7 +7,8 @@ import {
   GlobalOutlined,
   BulbOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  CodeOutlined
 } from '@ant-design/icons'
 import { useUIStore } from '../stores/uiStore'
 import DatabaseTree from '../components/database-tree/DatabaseTree'
@@ -16,6 +17,8 @@ import DataTable from '../components/data-table/DataTable'
 import StructurePage from '../pages/StructurePage'
 import SqlEditor from '../components/sql-editor/SqlEditor'
 import { useEditorStore } from '../stores/editorStore'
+import { useLogStore } from '../stores/logStore'
+import SqlLogPanel from '../components/sql-log/SqlLogPanel'
 import { useTheme, type ThemeMode } from '../hooks/useTheme'
 import { setLanguage, getCurrentLanguage } from '../i18n'
 
@@ -33,6 +36,7 @@ const MainLayout: React.FC = () => {
   } = useUIStore()
   const { connections } = useConnectionStore()
   const { tabs: sqlTabs } = useEditorStore()
+  const { panelVisible, togglePanel } = useLogStore()
 
   const isResizing = React.useRef(false)
 
@@ -228,7 +232,7 @@ const MainLayout: React.FC = () => {
               onChange={setActiveTab}
               onEdit={onTabEdit as any}
               size="small"
-              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
               tabBarStyle={{ margin: 0, paddingLeft: 8 }}
               items={tabs.map((tab) => ({
                 key: tab.key,
@@ -252,6 +256,9 @@ const MainLayout: React.FC = () => {
               }))}
             />
           )}
+
+          {/* SQL Log Panel */}
+          <SqlLogPanel />
         </div>
       </div>
 
@@ -271,6 +278,15 @@ const MainLayout: React.FC = () => {
       >
         <span>{statusText || '就绪'}</span>
         <div style={{ display: 'flex', gap: 4 }}>
+          <Tooltip title={panelVisible ? '隐藏 SQL 日志' : '显示 SQL 日志'}>
+            <Button
+              type="text"
+              size="small"
+              style={{ fontSize: 11, color: panelVisible ? '#1677ff' : '#999', height: 20, padding: '0 4px' }}
+              icon={<CodeOutlined />}
+              onClick={togglePanel}
+            />
+          </Tooltip>
           <Dropdown
             menu={{
               items: themeMenuItems,
