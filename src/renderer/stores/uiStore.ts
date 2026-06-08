@@ -11,10 +11,13 @@ interface TabItem {
 
 interface UIState {
   sidebarWidth: number
+  sidebarCollapsed: boolean
   tabs: TabItem[]
   activeTabKey: string | null
   statusText: string
   setSidebarWidth: (width: number) => void
+  toggleSidebar: () => void
+  setSidebarCollapsed: (collapsed: boolean) => void
   openTab: (tab: TabItem) => void
   closeTab: (key: string) => void
   setActiveTab: (key: string) => void
@@ -23,10 +26,13 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set) => ({
   sidebarWidth: 280,
+  sidebarCollapsed: false,
   tabs: [],
   activeTabKey: null,
   statusText: '',
   setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   openTab: (tab) =>
     set((state) => {
       const existing = state.tabs.find((t) => t.key === tab.key)

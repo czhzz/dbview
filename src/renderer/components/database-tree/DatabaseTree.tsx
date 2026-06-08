@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { Tree, Dropdown, message, Popconfirm } from 'antd'
 import type { MenuProps } from 'antd'
 import {
@@ -71,6 +71,8 @@ const DatabaseTree: React.FC = () => {
   const { addTab } = useEditorStore()
 
   const [treeData, setTreeData] = React.useState<DataNode[]>([])
+  const treeDataRef = useRef(treeData)
+  treeDataRef.current = treeData
   const [expandedKeys, setExpandedKeys] = React.useState<React.Key[]>([])
   const prevConnectedRef = React.useRef<Set<string>>(new Set())
 
@@ -98,44 +100,102 @@ const DatabaseTree: React.FC = () => {
     return () => window.removeEventListener('dbview:new-connection', handler)
   }, [])
 
-  // Build root nodes from connections + groups
+  // Build root nodes from connections + groups.
+  // IMPORTANT: do NOT depend on connectedIds here. Rebuilding the tree while
+  // antd's loadData is in-flight (which happens because loadChildren calls
+  // addConnected → connectedIds changes mid-await) can leave nodes stuck in a
+  // "loaded but empty" state inside rc-tree's internal loadedKeys cache.
+  // Connection-icon color updates are handled in a separate effect below.
   React.useEffect(() => {
-    const groupedConns = new Map<string, ConnectionConfig[]>()
-    const ungroupedConns: ConnectionConfig[] = []
-
-    for (const conn of connections) {
-      if (conn.groupId) {
-        const list = groupedConns.get(conn.groupId) || []
-        list.push(conn)
-        groupedConns.set(conn.groupId, list)
-      } else {
-        ungroupedConns.push(conn)
+    setTreeData((prev) => {
+      // Index previously-loaded children by node key for fast lookup
+      const prevChildrenByKey = new Map<React.Key, DataNode[] | undefined>()
+      const collect = (nodes: DataNode[]) => {
+        for (const n of nodes) {
+          if (n.children !== undefined) prevChildrenByKey.set(n.key, n.children)
+          if (n.children) collect(n.children)
+        }
       }
-    }
+      collect(prev)
 
-    const roots: DataNode[] = []
+      const groupedConns = new Map<string, ConnectionConfig[]>()
+      const ungroupedConns: ConnectionConfig[] = []
+      for (const conn of connections) {
+        if (conn.groupId) {
+          const list = groupedConns.get(conn.groupId) || []
+          list.push(conn)
+          groupedConns.set(conn.groupId, list)
+        } else {
+          ungroupedConns.push(conn)
+        }
+      }
 
-    // Add group folders first
-    for (const group of groups) {
-      const groupConns = groupedConns.get(group.id) || []
-      roots.push({
-        key: `group:${group.id}`,
-        title: group.name,
-        icon: iconMap.folder,
-        isLeaf: false,
-        itemType: 'group' as const,
-        groupId: group.id,
-        children: groupConns.map((conn) => buildConnectionNode(conn))
-      })
-    }
+      const roots: DataNode[] = []
 
-    // Add ungrouped connections
-    for (const conn of ungroupedConns) {
-      roots.push(buildConnectionNode(conn))
-    }
+      for (const group of groups) {
+        const groupConns = groupedConns.get(group.id) || []
+        const key = `group:${group.id}`
+        roots.push({
+          key,
+          title: group.name,
+          icon: iconMap.folder,
+          isLeaf: false,
+          itemType: 'group' as const,
+          groupId: group.id,
+          children: groupConns.map((conn) => {
+            const node = buildConnectionNode(conn)
+            const cached = prevChildrenByKey.get(node.key)
+            return cached !== undefined ? { ...node, children: cached } : node
+          })
+        })
+      }
 
-    setTreeData(roots)
+      for (const conn of ungroupedConns) {
+        const node = buildConnectionNode(conn)
+        const cached = prevChildrenByKey.get(node.key)
+        roots.push(cached !== undefined ? { ...node, children: cached } : node)
+      }
+
+      return roots
+    })
   }, [connections, groups])
+
+  // (Optional) Update connection-node icon color when connectedIds changes.
+  // Kept conservative: only re-create the node object when the connected flag
+  // actually flipped — never touch its children. This avoids invalidating
+  // antd's loadedKeys cache when we don't need to.
+  React.useEffect(() => {
+    setTreeData((prev) => {
+      let changed = false
+      const patch = (nodes: DataNode[]): DataNode[] => {
+        const next = nodes.map((n) => {
+          const k = String(n.key)
+          if (k.startsWith('conn:')) {
+            const id = k.slice(5)
+            const isConnected = connectedIds.has(id)
+            const prevConnected = (n as any).__connected
+            if (prevConnected === isConnected) return n
+            changed = true
+            return {
+              ...n,
+              __connected: isConnected,
+              icon: <DatabaseOutlined style={{ color: isConnected ? '#52c41a' : '#999' }} />
+            }
+          }
+          if (n.children) {
+            const newChildren = patch(n.children)
+            if (newChildren !== n.children) {
+              return { ...n, children: newChildren }
+            }
+          }
+          return n
+        })
+        return next
+      }
+      const out = patch(prev)
+      return changed ? out : prev
+    })
+  }, [connectedIds])
 
   const buildConnectionNode = (conn: ConnectionConfig): DataNode => {
     const isConnected = connectedIds.has(conn.id)
@@ -164,125 +224,13 @@ const DatabaseTree: React.FC = () => {
     }
   }
 
-  // Auto-expand newly connected connections
-  React.useEffect(() => {
-    const prev = prevConnectedRef.current
-    const newlyConnected: React.Key[] = []
-    connectedIds.forEach((id) => {
-      if (!prev.has(id)) {
-        newlyConnected.push(`conn:${id}`)
-      }
-    })
-    prevConnectedRef.current = new Set(connectedIds)
-
-    if (newlyConnected.length > 0) {
-      setExpandedKeys((prev) => [...prev, ...newlyConnected])
-    }
-  }, [connectedIds])
-
-  // Connection CRUD handlers
-  const handleCreate = async (values: ConnectionConfigInput) => {
-    setFormLoading(true)
-    try {
-      const config = await connectionApi.create(values)
-      message.success('连接已创建')
-      setFormOpen(false)
-      addConnection(config)
-    } catch (err) {
-      message.error(`创建失败: ${err instanceof Error ? err.message : '未知错误'}`)
-    } finally {
-      setFormLoading(false)
-    }
-  }
-
-  const handleUpdate = async (values: ConnectionConfigInput) => {
-    if (!editConfig) return
-    setFormLoading(true)
-    try {
-      const updated = {
-        ...editConfig,
-        ...values,
-        password: values.password || editConfig.password,
-        updatedAt: Date.now()
-      }
-      await connectionApi.update(updated)
-      message.success('连接已更新')
-      setFormOpen(false)
-      setEditConfig(null)
-      updateConnection(updated)
-    } catch (err) {
-      message.error(`更新失败: ${err instanceof Error ? err.message : '未知错误'}`)
-    } finally {
-      setFormLoading(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    try {
-      await connectionApi.delete(id)
-      message.success('连接已删除')
-      removeConnection(id)
-      if (connectedIds.has(id)) {
-        removeConnected(id)
-      }
-    } catch (err) {
-      message.error(`删除失败: ${err instanceof Error ? err.message : '未知错误'}`)
-    }
-  }
-
-  const handleDuplicate = async (id: string) => {
-    try {
-      const config = await connectionApi.getById(id)
-      if (!config) return
-      const { id: _id, createdAt: _c, updatedAt: _u, ...input } = config
-      const cloned = await connectionApi.create({
-        ...input,
-        name: `${config.name} (副本)`
-      })
-      message.success('连接已复制')
-      addConnection(cloned)
-    } catch (err) {
-      message.error(`复制失败: ${err instanceof Error ? err.message : '未知错误'}`)
-    }
-  }
-
-  const handleConnect = async (id: string) => {
-    try {
-      await connectionApi.connect(id)
-      addConnected(id)
-      message.success('连接成功')
-    } catch (err) {
-      message.error(`连接失败: ${err instanceof Error ? err.message : '未知错误'}`)
-    }
-  }
-
-  const handleDisconnect = async (id: string) => {
-    try {
-      await connectionApi.disconnect(id)
-      removeConnected(id)
-      message.success('已断开连接')
-      // Remove children of this connection node
-      setTreeData((prev) => {
-        return prev.map((node) => {
-          if (node.key === `conn:${id}`) {
-            return { ...node, children: undefined }
-          }
-          return node
-        })
-      })
-    } catch (err) {
-      message.error(`断开失败: ${err instanceof Error ? err.message : '未知错误'}`)
-    }
-  }
-
   const loadChildren = useCallback(
     async (nodeKey: string): Promise<DataNode[]> => {
       const parts = nodeKey.split(':')
       const type = parts[0]
-      const connId = parts[1]
+      let connId = parts[1]
 
       if (type === 'conn') {
-        // Connect and load databases
         try {
           if (!connectedIds.has(connId)) {
             await connectionApi.connect(connId)
@@ -380,7 +328,9 @@ const DatabaseTree: React.FC = () => {
       }
 
       if (type.startsWith('folder')) {
+        // key format: folder:FOLDERTYPE:CONNID:SCHEMA[:TABLE]
         const folderType = parts[1]
+        connId = parts[2]
         const schema = parts[3]
         const children: DataNode[] = []
 
@@ -459,6 +409,30 @@ const DatabaseTree: React.FC = () => {
               routineType: r.type
             })
           }
+        } else if (folderType === 'columns') {
+          // key format: folder:columns:CONNID:SCHEMA:TABLE
+          const tableName = parts.slice(4).join(':')
+          const columns = await databaseApi.getColumns(connId, tableName, schema)
+          return columns.map((col) => ({
+            key: `col:${connId}:${schema}:${tableName}:${col.name}`,
+            title: `${col.name}  ${col.type}`,
+            icon: col.key === 'PRI' ? <KeyOutlined style={{ color: '#eb2f96' }} /> : iconMap.column,
+            isLeaf: true,
+            connId,
+            itemType: 'column' as const
+          }))
+        } else if (folderType === 'indexes') {
+          // key format: folder:indexes:CONNID:SCHEMA:TABLE
+          const tableName = parts.slice(4).join(':')
+          const indexes = await databaseApi.getIndexes(connId, tableName, schema)
+          return indexes.map((idx) => ({
+            key: `idx:${connId}:${schema}:${tableName}:${idx.name}`,
+            title: idx.name,
+            icon: iconMap.index,
+            isLeaf: true,
+            connId,
+            itemType: 'index' as const
+          }))
         }
         return children
       }
@@ -499,38 +473,144 @@ const DatabaseTree: React.FC = () => {
         return children
       }
 
-      if (type === 'folder' && parts[1] === 'columns') {
-        const schema = parts[2]
-        const tableName = parts.slice(3).join(':')
-        const columns = await databaseApi.getColumns(connId, tableName, schema)
-        return columns.map((col) => ({
-          key: `col:${connId}:${schema}:${tableName}:${col.name}`,
-          title: `${col.name}  ${col.type}`,
-          icon: col.key === 'PRI' ? <KeyOutlined style={{ color: '#eb2f96' }} /> : iconMap.column,
-          isLeaf: true,
-          connId,
-          itemType: 'column' as const
-        }))
-      }
-
-      if (type === 'folder' && parts[1] === 'indexes') {
-        const schema = parts[2]
-        const tableName = parts.slice(3).join(':')
-        const indexes = await databaseApi.getIndexes(connId, tableName, schema)
-        return indexes.map((idx) => ({
-          key: `idx:${connId}:${schema}:${tableName}:${idx.name}`,
-          title: idx.name,
-          icon: iconMap.index,
-          isLeaf: true,
-          connId,
-          itemType: 'index' as const
-        }))
-      }
-
       return []
     },
     [connectedIds, addConnected]
   )
+
+  // Store latest loadChildren in a ref to avoid effect-dependency cycles
+  // (loadChildren depends on connectedIds; the effect below also depends on connectedIds.
+  // Including loadChildren in the effect deps risks TDZ during HMR / strict-mode init.)
+  const loadChildrenRef = useRef(loadChildren)
+  loadChildrenRef.current = loadChildren
+
+  // Auto-expand newly connected connections and load their children.
+  // Only load if the node doesn't already have children (avoid racing with onLoadData,
+  // which is fired by antd Tree itself when the user clicks the expand caret).
+  React.useEffect(() => {
+    const prev = prevConnectedRef.current
+    const newlyConnected: string[] = []
+    connectedIds.forEach((id) => {
+      if (!prev.has(id)) newlyConnected.push(`conn:${id}`)
+    })
+
+    if (newlyConnected.length === 0) {
+      prevConnectedRef.current = new Set(connectedIds)
+      return
+    }
+
+    setExpandedKeys((p) => Array.from(new Set([...p, ...newlyConnected])))
+
+    let cancelled = false
+    ;(async () => {
+      for (const key of newlyConnected) {
+        // Skip if node already has children (loaded via onLoadData).
+        // Read latest treeData via ref to avoid stale closure.
+        if (findNodeChildren(treeDataRef.current, key) !== undefined) continue
+        const children = await loadChildrenRef.current(key)
+        if (cancelled) return
+        setTreeData((p) => updateTreeNode(p, key, children))
+      }
+      if (!cancelled) prevConnectedRef.current = new Set(connectedIds)
+    })()
+
+    return () => { cancelled = true }
+  }, [connectedIds])
+
+  // Connection CRUD handlers
+  const handleCreate = async (values: ConnectionConfigInput) => {
+    setFormLoading(true)
+    try {
+      const config = await connectionApi.create(values)
+      message.success('连接已创建')
+      setFormOpen(false)
+      addConnection(config)
+    } catch (err) {
+      message.error(`创建失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleUpdate = async (values: ConnectionConfigInput) => {
+    if (!editConfig) return
+    setFormLoading(true)
+    try {
+      const updated = {
+        ...editConfig,
+        ...values,
+        password: values.password || editConfig.password,
+        updatedAt: Date.now()
+      }
+      await connectionApi.update(updated)
+      message.success('连接已更新')
+      setFormOpen(false)
+      setEditConfig(null)
+      updateConnection(updated)
+    } catch (err) {
+      message.error(`更新失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await connectionApi.delete(id)
+      message.success('连接已删除')
+      removeConnection(id)
+      if (connectedIds.has(id)) {
+        removeConnected(id)
+      }
+    } catch (err) {
+      message.error(`删除失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleDuplicate = async (id: string) => {
+    try {
+      const config = await connectionApi.getById(id)
+      if (!config) return
+      const { id: _id, createdAt: _c, updatedAt: _u, ...input } = config
+      const cloned = await connectionApi.create({
+        ...input,
+        name: `${config.name} (副本)`
+      })
+      message.success('连接已复制')
+      addConnection(cloned)
+    } catch (err) {
+      message.error(`复制失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleConnect = async (id: string) => {
+    try {
+      await connectionApi.connect(id)
+      addConnected(id)
+      message.success('连接成功')
+    } catch (err) {
+      message.error(`连接失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
+
+  const handleDisconnect = async (id: string) => {
+    try {
+      await connectionApi.disconnect(id)
+      removeConnected(id)
+      message.success('已断开连接')
+      // Remove children of this connection node
+      setTreeData((prev) => {
+        return prev.map((node) => {
+          if (node.key === `conn:${id}`) {
+            return { ...node, children: undefined }
+          }
+          return node
+        })
+      })
+    } catch (err) {
+      message.error(`断开失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }
 
   const onLoadData = async (node: DataNode): Promise<void> => {
     const key = String(node.key)
@@ -846,6 +926,18 @@ function updateTreeNode(
     }
     return node
   })
+}
+
+// Helper: find a node's children by key (returns undefined if node not found or has no children)
+function findNodeChildren(nodes: DataNode[], key: string): DataNode[] | undefined {
+  for (const node of nodes) {
+    if (node.key === key) return node.children
+    if (node.children) {
+      const found = findNodeChildren(node.children, key)
+      if (found !== undefined) return found
+    }
+  }
+  return undefined
 }
 
 export default DatabaseTree

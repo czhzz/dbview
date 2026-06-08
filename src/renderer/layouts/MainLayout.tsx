@@ -1,6 +1,14 @@
 import React from 'react'
-import { Tabs, Button, Typography, Dropdown } from 'antd'
-import { PlusOutlined, CloseOutlined, DatabaseOutlined, GlobalOutlined, BulbOutlined } from '@ant-design/icons'
+import { Tabs, Button, Typography, Dropdown, Tooltip } from 'antd'
+import {
+  PlusOutlined,
+  CloseOutlined,
+  DatabaseOutlined,
+  GlobalOutlined,
+  BulbOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined
+} from '@ant-design/icons'
 import { useUIStore } from '../stores/uiStore'
 import DatabaseTree from '../components/database-tree/DatabaseTree'
 import { useConnectionStore } from '../stores/connectionStore'
@@ -15,6 +23,8 @@ const MainLayout: React.FC = () => {
   const {
     sidebarWidth,
     setSidebarWidth,
+    sidebarCollapsed,
+    toggleSidebar,
     tabs,
     activeTabKey,
     closeTab,
@@ -93,56 +103,107 @@ const MainLayout: React.FC = () => {
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#fff' }}>
       {/* Main content area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left sidebar */}
-        <div
-          style={{
-            width: sidebarWidth,
-            minWidth: 200,
-            maxWidth: 500,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRight: '1px solid #e8e8e8',
-            background: '#fafafa',
-            overflow: 'hidden'
-          }}
-        >
+        {/* Left sidebar - collapsed mode */}
+        {sidebarCollapsed ? (
           <div
             style={{
-              padding: '10px 12px',
-              borderBottom: '1px solid #e8e8e8',
+              width: 36,
+              minWidth: 36,
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              flexDirection: 'column',
+              alignItems: 'center',
+              borderRight: '1px solid #e8e8e8',
+              background: '#fafafa',
+              paddingTop: 8,
+              gap: 8
             }}
           >
-            <Typography.Text strong style={{ fontSize: 13 }}>
-              <DatabaseOutlined style={{ marginRight: 6 }} />
-              连接
-            </Typography.Text>
-            <Button
-              type="text"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                // Open connection form via a custom event
-                window.dispatchEvent(new CustomEvent('dbview:new-connection'))
-              }}
-              title="新建连接"
-            />
+            <Tooltip title="展开侧边栏" placement="right">
+              <Button
+                type="text"
+                size="small"
+                icon={<MenuUnfoldOutlined />}
+                onClick={toggleSidebar}
+              />
+            </Tooltip>
+            <Tooltip title="新建连接" placement="right">
+              <Button
+                type="text"
+                size="small"
+                icon={<DatabaseOutlined />}
+                onClick={() => {
+                  // Expand sidebar first then open form
+                  toggleSidebar()
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('dbview:new-connection'))
+                  }, 50)
+                }}
+              />
+            </Tooltip>
           </div>
-          <DatabaseTree />
-        </div>
+        ) : (
+          <>
+            <div
+              style={{
+                width: sidebarWidth,
+                minWidth: 200,
+                maxWidth: 500,
+                display: 'flex',
+                flexDirection: 'column',
+                borderRight: '1px solid #e8e8e8',
+                background: '#fafafa',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  padding: '10px 12px',
+                  borderBottom: '1px solid #e8e8e8',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <Typography.Text strong style={{ fontSize: 13 }}>
+                  <DatabaseOutlined style={{ marginRight: 6 }} />
+                  连接
+                </Typography.Text>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  <Tooltip title="新建连接">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('dbview:new-connection'))
+                      }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="折叠侧边栏">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<MenuFoldOutlined />}
+                      onClick={toggleSidebar}
+                    />
+                  </Tooltip>
+                </div>
+              </div>
+              <DatabaseTree />
+            </div>
 
-        {/* Resize handle */}
-        <div
-          onMouseDown={handleMouseDown}
-          style={{
-            width: 4,
-            cursor: 'col-resize',
-            background: 'transparent',
-            flexShrink: 0
-          }}
-        />
+            {/* Resize handle */}
+            <div
+              onMouseDown={handleMouseDown}
+              style={{
+                width: 4,
+                cursor: 'col-resize',
+                background: 'transparent',
+                flexShrink: 0
+              }}
+            />
+          </>
+        )}
 
         {/* Right content area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

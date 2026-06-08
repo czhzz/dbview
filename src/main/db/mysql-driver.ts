@@ -60,12 +60,13 @@ export class MySQLDriver implements DatabaseDriver {
 
   async getDatabases(): Promise<string[]> {
     const [rows] = await this.getPool().query<RowDataPacket[]>('SHOW DATABASES')
-    return rows
-      .map((r: RowDataPacket) => r.Database)
-      .filter(
-        (db: string) =>
-          !['information_schema', 'performance_schema', 'sys', 'mysql'].includes(db)
-      )
+    const all = rows.map((r: RowDataPacket) => r.Database as string)
+    const SYSTEM_DBS = ['information_schema', 'performance_schema', 'sys', 'mysql']
+    const userDbs = all.filter((db) => !SYSTEM_DBS.includes(db))
+    // Fall back to showing system DBs if there are no user databases — otherwise
+    // the sidebar would be empty and users (especially on fresh installs) would
+    // think the app is broken.
+    return userDbs.length > 0 ? userDbs : all
   }
 
   async getTables(schema?: string): Promise<TableInfo[]> {
