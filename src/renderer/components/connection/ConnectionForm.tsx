@@ -76,6 +76,7 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
       confirmLoading={loading}
       width={520}
       destroyOnClose
+      styles={{ body: { maxHeight: 'calc(80vh - 120px)', overflowY: 'auto', paddingRight: 4 } }}
       footer={[
         <ConnectionTestBtn key="test" getValues={getValues} />,
         <Button key="cancel" onClick={onCancel}>
@@ -89,6 +90,7 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
       <Form
         form={form}
         layout="vertical"
+        size="small"
         initialValues={{ type: 'mysql', host: '127.0.0.1', port: 3306, ssl: false }}
       >
         <Form.Item

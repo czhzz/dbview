@@ -1,5 +1,5 @@
 import React from 'react'
-import { Tabs, Button, Typography, Dropdown, Tooltip } from 'antd'
+import { Tabs, Button, Typography, Dropdown, Tooltip, Modal } from 'antd'
 import {
   PlusOutlined,
   CloseOutlined,
@@ -8,10 +8,12 @@ import {
   BulbOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  CodeOutlined
+  CodeOutlined,
+  FolderOutlined
 } from '@ant-design/icons'
 import { useUIStore } from '../stores/uiStore'
 import DatabaseTree from '../components/database-tree/DatabaseTree'
+import ConnectionGroups from '../components/connection/ConnectionGroups'
 import { useConnectionStore } from '../stores/connectionStore'
 import DataTable from '../components/data-table/DataTable'
 import StructurePage from '../pages/StructurePage'
@@ -21,6 +23,8 @@ import { useLogStore } from '../stores/logStore'
 import SqlLogPanel from '../components/sql-log/SqlLogPanel'
 import { useTheme, type ThemeMode } from '../hooks/useTheme'
 import { setLanguage, getCurrentLanguage } from '../i18n'
+import { connectionApi } from '../services/api'
+import type { ConnectionGroup } from '../types/connection'
 
 const MainLayout: React.FC = () => {
   const {
@@ -37,6 +41,24 @@ const MainLayout: React.FC = () => {
   const { connections } = useConnectionStore()
   const { tabs: sqlTabs } = useEditorStore()
   const { panelVisible, togglePanel } = useLogStore()
+
+  // Connection groups management modal
+  const [groupsModalOpen, setGroupsModalOpen] = React.useState(false)
+  const [groups, setGroups] = React.useState<ConnectionGroup[]>([])
+
+  const loadGroups = React.useCallback(() => {
+    connectionApi.listGroups().then(setGroups).catch(() => {})
+  }, [])
+
+  React.useEffect(() => {
+    loadGroups()
+  }, [loadGroups])
+
+  // When groups change, notify DatabaseTree to reload
+  const notifyGroupsChanged = React.useCallback(() => {
+    loadGroups()
+    window.dispatchEvent(new CustomEvent('dbview:groups-changed'))
+  }, [loadGroups])
 
   const isResizing = React.useRef(false)
 
@@ -183,6 +205,14 @@ const MainLayout: React.FC = () => {
                       }}
                     />
                   </Tooltip>
+                  <Tooltip title="分组管理">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<FolderOutlined />}
+                      onClick={() => setGroupsModalOpen(true)}
+                    />
+                  </Tooltip>
                   <Tooltip title="折叠侧边栏">
                     <Button
                       type="text"
@@ -314,6 +344,18 @@ const MainLayout: React.FC = () => {
           </Dropdown>
         </div>
       </div>
+
+      {/* Connection groups management modal */}
+      <Modal
+        title="分组管理"
+        open={groupsModalOpen}
+        onCancel={() => setGroupsModalOpen(false)}
+        footer={null}
+        width={480}
+        destroyOnClose
+      >
+        <ConnectionGroups groups={groups} onRefresh={notifyGroupsChanged} />
+      </Modal>
     </div>
   )
 }

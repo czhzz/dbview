@@ -69,7 +69,13 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
   const { setStatusText } = useUIStore()
   const connections = useConnectionStore((s) => s.connections)
 
-  const { cmTheme } = useTheme()
+  const { cmTheme, isDark } = useTheme()
+
+  // Editor height (resizable)
+  const [editorHeight, setEditorHeight] = React.useState(200)
+  const isEditorResizing = React.useRef(false)
+  const editorResizeStartY = React.useRef(0)
+  const editorResizeStartH = React.useRef(0)
 
   // Derive the database type from the connection config
   const connection = useMemo(
@@ -314,8 +320,8 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
       <div
         style={{
           padding: '6px 12px',
-          borderBottom: '1px solid #333',
-          background: '#1e1e1e',
+          borderBottom: `1px solid ${isDark ? '#333' : '#e8e8e8'}`,
+          background: isDark ? '#1e1e1e' : '#fafafa',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -374,7 +380,38 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
       </div>
 
       {/* CodeMirror editor */}
-      <div style={{ height: 200, borderBottom: '1px solid #333' }} ref={editorRef} />
+      <div style={{ height: editorHeight, position: 'relative' }} ref={editorRef} />
+      {/* Editor resize handle */}
+      <div
+        onMouseDown={(e) => {
+          e.preventDefault()
+          isEditorResizing.current = true
+          editorResizeStartY.current = e.clientY
+          editorResizeStartH.current = editorHeight
+
+          const handleMouseMove = (ev: MouseEvent) => {
+            if (!isEditorResizing.current) return
+            const diff = ev.clientY - editorResizeStartY.current
+            setEditorHeight(Math.max(80, Math.min(600, editorResizeStartH.current + diff)))
+          }
+
+          const handleMouseUp = () => {
+            isEditorResizing.current = false
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+          }
+
+          document.addEventListener('mousemove', handleMouseMove)
+          document.addEventListener('mouseup', handleMouseUp)
+        }}
+        style={{
+          height: 4,
+          cursor: 'row-resize',
+          background: 'transparent',
+          borderBottom: `1px solid ${isDark ? '#333' : '#e8e8e8'}`,
+          flexShrink: 0
+        }}
+      />
 
       {/* Results / History */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

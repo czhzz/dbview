@@ -100,6 +100,15 @@ const DatabaseTree: React.FC = () => {
     return () => window.removeEventListener('dbview:new-connection', handler)
   }, [])
 
+  // Listen for groups-changed event from ConnectionGroups modal
+  React.useEffect(() => {
+    const handler = () => {
+      connectionApi.listGroups().then(setGroups).catch(() => {})
+    }
+    window.addEventListener('dbview:groups-changed', handler)
+    return () => window.removeEventListener('dbview:groups-changed', handler)
+  }, [])
+
   // Build root nodes from connections + groups.
   // IMPORTANT: do NOT depend on connectedIds here. Rebuilding the tree while
   // antd's loadData is in-flight (which happens because loadChildren calls
@@ -784,13 +793,30 @@ const DatabaseTree: React.FC = () => {
         key: 'view-definition',
         label: '查看定义',
         icon: <CodeOutlined />,
-        onClick: () =>
-          openTab({
-            key: `routine-def:${connId}:${schema}:${node.routineType}:${node.routineName}`,
-            title: `${node.routineName} (${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'})`,
-            type: 'query',
-            connId: connId || ''
-          })
+        onClick: async () => {
+          try {
+            const definition = await databaseApi.getRoutineDefinition(
+              connId || '',
+              node.routineName as string,
+              node.routineType as 'PROCEDURE' | 'FUNCTION',
+              schema
+            )
+            const header = `-- ${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'}: ${node.routineName}\n`
+            const sql = definition ? header + definition : `${header}-- 无定义或无查看权限`
+            const tab = createNewTab(sql)
+            tab.title = `${node.routineName} (${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'})`
+            addTab(tab)
+            openTab({
+              key: `query-${tab.id}`,
+              title: tab.title,
+              type: 'query',
+              connId: connId || '',
+              schema
+            })
+          } catch (err) {
+            message.error(`获取定义失败: ${err instanceof Error ? err.message : '未知错误'}`)
+          }
+        }
       })
       return items
     }
@@ -927,7 +953,7 @@ const DatabaseTree: React.FC = () => {
         </div>
       ) : (
         <Tree
-          treeData={treeData.map((n) => ({ ...n, title: renderTitle(n) }))}
+          treeData={applyRenderTitle(treeData, renderTitle)}
           loadData={onLoadData}
           onDoubleClick={onDoubleClick}
           expandedKeys={expandedKeys}
@@ -977,6 +1003,15 @@ function findNodeChildren(nodes: DataNode[], key: string): DataNode[] | undefine
     }
   }
   return undefined
+}
+
+// Helper: recursively apply renderTitle to all tree nodes
+function applyRenderTitle(nodes: DataNode[], renderTitle: (node: DataNode) => React.ReactNode): DataNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    title: renderTitle(node),
+    children: node.children ? applyRenderTitle(node.children, renderTitle) : undefined
+  }))
 }
 
 export default DatabaseTree
