@@ -269,13 +269,6 @@ const MainLayout: React.FC = () => {
                 label: (
                   <span style={{ fontSize: 12 }}>
                     {tab.title}
-                    <CloseOutlined
-                      style={{ marginLeft: 6, fontSize: 10 }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        closeTab(tab.key)
-                      }}
-                    />
                   </span>
                 ),
                 children: (

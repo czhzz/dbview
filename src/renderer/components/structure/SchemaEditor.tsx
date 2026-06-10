@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { Modal, Form, Input, Select, Switch, InputNumber, Typography, Alert, message } from 'antd'
 import { sqlApi } from '../../services/api'
+import { useDbType } from '../../hooks/useDbType'
+import { quoteId, quoteTable, type DbType } from '../../utils/sql-quote'
 import type { ColumnInfo, IndexInfo } from '../../types/database'
 
 // Common SQL column types
@@ -39,8 +41,10 @@ export function useSchemaEditor(
     setColDialogOpen(true)
   }, [])
 
+  const dbType = useDbType(connId)
+
   const handleDeleteColumn = useCallback(async (col: ColumnInfo) => {
-    const ddl = `ALTER TABLE \`${table}\` DROP COLUMN \`${col.name}\`;`
+    const ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} DROP COLUMN ${quoteId(col.name, dbType)};`
     try {
       await sqlApi.execute(connId, ddl)
       message.success(`已删除列 "${col.name}"`)
@@ -48,10 +52,13 @@ export function useSchemaEditor(
     } catch (err) {
       message.error(`删除列失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
-  }, [connId, table, onSuccess])
+  }, [connId, table, schema, dbType, onSuccess])
 
   const handleDeleteIndex = useCallback(async (idx: IndexInfo) => {
-    const ddl = `DROP INDEX \`${idx.name}\` ON \`${table}\`;`
+    // MySQL: DROP INDEX `idx` ON `table`;  Others: DROP INDEX "idx"
+    const ddl = dbType === 'mysql'
+      ? `DROP INDEX ${quoteId(idx.name, dbType)} ON ${quoteTable(table, schema, dbType)};`
+      : `DROP INDEX ${quoteId(idx.name, dbType)};`
     try {
       await sqlApi.execute(connId, ddl)
       message.success(`已删除索引 "${idx.name}"`)
@@ -59,7 +66,7 @@ export function useSchemaEditor(
     } catch (err) {
       message.error(`删除索引失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
-  }, [connId, table, onSuccess])
+  }, [connId, table, schema, dbType, onSuccess])
 
   const executeDdl = useCallback(async (ddl: string) => {
     try {
@@ -103,10 +110,12 @@ export const ColumnDialog: React.FC<{
   open: boolean
   mode: 'add' | 'edit'
   table: string
+  schema?: string
+  dbType: DbType
   column?: ColumnInfo
   onClose: () => void
   onConfirm: (ddl: string) => Promise<void>
-}> = ({ open, mode, table, column, onClose, onConfirm }) => {
+}> = ({ open, mode, table, schema, dbType, column, onClose, onConfirm }) => {
   const [form] = Form.useForm<ColumnFormValues>()
   const [previewDdl, setPreviewDdl] = useState<string | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
@@ -122,9 +131,11 @@ export const ColumnDialog: React.FC<{
     const comment = values.comment ? ` COMMENT '${values.comment.replace(/'/g, "''")}'` : ''
 
     if (mode === 'add') {
-      return `ALTER TABLE \`${table}\` ADD COLUMN \`${values.name}\` ${typeStr}${nullable}${defaultVal}${comment};`
+      return `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
     }
-    return `ALTER TABLE \`${table}\` MODIFY COLUMN \`${values.name}\` ${typeStr}${nullable}${defaultVal}${comment};`
+    // MODIFY COLUMN is MySQL-specific; PG uses ALTER COLUMN ... SET DATA TYPE
+    // For now, use MODIFY COLUMN with proper quoting — MySQL only supports this syntax
+    return `ALTER TABLE ${quoteTable(table, schema, dbType)} MODIFY COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
   }
 
   const handleOk = async () => {
@@ -238,18 +249,20 @@ interface IndexFormValues {
 export const IndexDialog: React.FC<{
   open: boolean
   table: string
+  schema?: string
+  dbType: DbType
   availableColumns: string[]
   onClose: () => void
   onConfirm: (ddl: string) => Promise<void>
-}> = ({ open, table, availableColumns, onClose, onConfirm }) => {
+}> = ({ open, table, schema, dbType, availableColumns, onClose, onConfirm }) => {
   const [form] = Form.useForm<IndexFormValues>()
   const [previewDdl, setPreviewDdl] = useState<string | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
 
   const generateDDL = (values: IndexFormValues): string => {
     const unique = values.unique ? 'UNIQUE ' : ''
-    const colList = values.columns.map((c) => '`' + c + '`').join(', ')
-    return `CREATE ${unique}INDEX \`${values.name}\` ON \`${table}\` (${colList});`
+    const colList = values.columns.map((c) => quoteId(c, dbType)).join(', ')
+    return `CREATE ${unique}INDEX ${quoteId(values.name, dbType)} ON ${quoteTable(table, schema, dbType)} (${colList});`
   }
 
   const handleOk = async () => {

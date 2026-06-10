@@ -11,6 +11,8 @@ import {
   CloseOutlined
 } from '@ant-design/icons'
 import { dataApi, databaseApi, sqlApi } from '../../services/api'
+import { useDbType } from '../../hooks/useDbType'
+import { quoteId, quoteTable } from '../../utils/sql-quote'
 import { useUIStore } from '../../stores/uiStore'
 import DataExport from './DataExport'
 import type { PaginationResult, ColumnInfo } from '../../types/database'
@@ -34,6 +36,7 @@ interface PendingChange {
 }
 
 const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
+  const dbType = useDbType(connId)
   const [data, setData] = useState<PaginationResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
@@ -235,23 +238,23 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
         case 'update': {
           if (!change.modifiedValues || !change.originalRow) break
           const setClauses = Object.entries(change.modifiedValues)
-            .map(([col, val]) => `\`${col}\` = ${formatSqlValue(val)}`)
+            .map(([col, val]) => `${quoteId(col, dbType)} = ${formatSqlValue(val)}`)
             .join(', ')
           const whereClause = buildWhereClause(change.originalRow)
-          statements.push(`UPDATE \`${table}\` SET ${setClauses} WHERE ${whereClause};`)
+          statements.push(`UPDATE ${quoteTable(table, schema, dbType)} SET ${setClauses} WHERE ${whereClause};`)
           break
         }
         case 'insert': {
           if (!change.modifiedValues) break
           const cols = Object.keys(change.modifiedValues)
           const vals = Object.values(change.modifiedValues).map(formatSqlValue)
-          statements.push(`INSERT INTO \`${table}\` (${cols.map((c) => '`' + c + '`').join(', ')}) VALUES (${vals.join(', ')});`)
+          statements.push(`INSERT INTO ${quoteTable(table, schema, dbType)} (${cols.map((c) => quoteId(c, dbType)).join(', ')}) VALUES (${vals.join(', ')});`)
           break
         }
         case 'delete': {
           if (!change.originalRow) break
           const whereClause = buildWhereClause(change.originalRow)
-          statements.push(`DELETE FROM \`${table}\` WHERE ${whereClause};`)
+          statements.push(`DELETE FROM ${quoteTable(table, schema, dbType)} WHERE ${whereClause};`)
           break
         }
       }
@@ -295,7 +298,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
     // Use primary key columns if available; otherwise use all columns
     const keyCols = pkColumns.length > 0 ? pkColumns : Object.keys(row)
     return keyCols
-      .map((col) => `\`${col}\` = ${formatSqlValue(row[col])}`)
+      .map((col) => `${quoteId(col, dbType)} = ${formatSqlValue(row[col])}`)
       .join(' AND ')
   }
 
@@ -457,11 +460,13 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
             currentData={{
               columns: data?.columns || [],
               rows: data?.rows || [],
-              tableName: table
+              tableName: table,
+              dbType
             }}
             connId={connId}
             tableName={table}
             schema={schema}
+            dbType={dbType}
             baseQueryParams={{
               table,
               schema,

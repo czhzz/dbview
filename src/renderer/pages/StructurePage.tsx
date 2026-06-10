@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Tabs, Typography, Space, Button } from 'antd'
 import { TableOutlined, EditOutlined } from '@ant-design/icons'
 import { databaseApi } from '../services/api'
+import { useDbType } from '../hooks/useDbType'
 import ColumnList from '../components/structure/ColumnList'
 import IndexList from '../components/structure/IndexList'
 import DDLViewer from '../components/structure/DDLViewer'
@@ -15,6 +16,7 @@ interface Props {
 }
 
 const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
+  const dbType = useDbType(connId)
   const [columns, setColumns] = useState<ColumnInfo[]>([])
   const [indexes, setIndexes] = useState<IndexInfo[]>([])
   const [ddl, setDdl] = useState('')
@@ -125,6 +127,8 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
         open={editor.colDialogOpen}
         mode={editor.colDialogMode}
         table={table}
+        schema={schema}
+        dbType={dbType}
         column={editor.editingColumn}
         onClose={() => editor.setColDialogOpen(false)}
         onConfirm={editor.executeDdl}
@@ -132,6 +136,8 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
       <IndexDialog
         open={editor.indexDialogOpen}
         table={table}
+        schema={schema}
+        dbType={dbType}
         availableColumns={columns.map((c) => c.name)}
         onClose={() => editor.setIndexDialogOpen(false)}
         onConfirm={editor.executeDdl}

@@ -5,11 +5,15 @@
  * and SqlEditor contexts.
  */
 
+import type { DbType } from './sql-quote'
+import { quoteId } from './sql-quote'
+
 /** Shared input shape for export formatters */
 export interface ExportData {
   columns: string[]
   rows: Record<string, unknown>[]
   tableName?: string
+  dbType?: DbType
 }
 
 // ---------------------------------------------------------------------------
@@ -82,20 +86,16 @@ export function formatJSON(data: ExportData): string {
  */
 export function formatSQLInsert(data: ExportData): string {
   const table = data.tableName || 'exported_data'
-  const colList = data.columns.map(quoteIdentifier).join(', ')
+  const dbType = data.dbType || 'mysql'
+  const colList = data.columns.map((c) => quoteId(c, dbType)).join(', ')
   const lines: string[] = []
 
   for (const row of data.rows) {
     const values = data.columns.map((col) => formatSQLValue(row[col]))
-    lines.push(`INSERT INTO ${quoteIdentifier(table)} (${colList}) VALUES (${values.join(', ')});`)
+    lines.push(`INSERT INTO ${quoteId(table, dbType)} (${colList}) VALUES (${values.join(', ')});`)
   }
 
   return lines.join('\n')
-}
-
-function quoteIdentifier(name: string): string {
-  // Use backtick quoting (MySQL-style) — safe for all supported DBs
-  return '`' + name.replace(/`/g, '``') + '`'
 }
 
 function formatSQLValue(value: unknown): string {

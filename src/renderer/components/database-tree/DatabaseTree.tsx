@@ -18,7 +18,8 @@ import {
   EditOutlined,
   CopyOutlined,
   DeleteOutlined,
-  PlusOutlined
+  PlusOutlined,
+  PlaySquareOutlined
 } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
 import { databaseApi, connectionApi, historyApi } from '../../services/api'
@@ -818,6 +819,38 @@ const DatabaseTree: React.FC = () => {
           }
         }
       })
+
+      // Execute routine: generate CALL/SELECT and open in SQL editor
+      const conn = connections.find((c) => c.id === connId)
+      const routineDbType = conn?.type || 'mysql'
+      let callSql: string
+      if (node.routineType === 'FUNCTION') {
+        callSql = routineDbType === 'oracle'
+          ? `SELECT ${node.routineName}() FROM dual;`
+          : `SELECT ${node.routineName}();`
+      } else {
+        callSql = routineDbType === 'oracle'
+          ? `BEGIN ${node.routineName}(); END;`
+          : `CALL ${node.routineName}();`
+      }
+      items.push({
+        key: 'execute-routine',
+        label: '执行',
+        icon: <PlaySquareOutlined />,
+        onClick: () => {
+          const tab = createNewTab(callSql)
+          tab.title = `${node.routineName} (${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'})`
+          addTab(tab)
+          openTab({
+            key: `query-${tab.id}`,
+            title: tab.title,
+            type: 'query',
+            connId: connId || '',
+            schema
+          })
+        }
+      })
+
       return items
     }
 

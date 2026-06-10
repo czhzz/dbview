@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons'
 import { dialogApi, dataApi, fileApi } from '../../services/api'
 import { formatCSV, formatJSON, formatSQLInsert, type ExportData } from '../../utils/export-formatters'
+import type { DbType } from '../../utils/sql-quote'
 import type { PaginationQuery, PaginationResult, SQLResult } from '../../types/database'
 
 type ExportFormat = 'csv' | 'json' | 'sql'
@@ -21,6 +22,8 @@ interface DataExportProps {
   tableName: string
   /** Schema name (optional, for PostgreSQL/Oracle) */
   schema?: string
+  /** Database type — used for SQL INSERT quoting */
+  dbType: DbType
   /** Optional base query params (sort, filters) for "export all" */
   baseQueryParams?: Omit<PaginationQuery, 'page' | 'pageSize'>
 }
@@ -150,7 +153,8 @@ const DataExport: React.FC<DataExportProps> = ({
         const exportData: ExportData = {
           columns,
           rows: allRows,
-          tableName
+          tableName,
+          dbType
         }
         const content = formatData(exportData, format)
         const saved = await saveFile(content, format, timestamp())
