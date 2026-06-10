@@ -30,7 +30,7 @@ export class SQLiteDriver implements DatabaseDriver {
       throw new Error('SQLite 文件路径不能为空')
     }
 
-    this.readOnly = config.ssl || false // reuse ssl flag as readonly
+    this.readOnly = config.readOnly || false
 
     this.db = new Database(filePath, {
       readonly: this.readOnly,

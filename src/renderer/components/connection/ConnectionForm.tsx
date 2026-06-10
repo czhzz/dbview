@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Modal, Form, Input, InputNumber, Select, Button } from 'antd'
+import { Modal, Form, Input, InputNumber, Select, Switch, Button } from 'antd'
 import { DatabaseOutlined } from '@ant-design/icons'
 import { connectionApi } from '../../services/api'
 import ConnectionTestBtn from './ConnectionTestBtn'
@@ -44,6 +44,7 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           password: editConfig.password,
           database: editConfig.database,
           ssl: editConfig.ssl,
+          readOnly: editConfig.readOnly,
           oracleServiceName: editConfig.oracleServiceName,
           groupId: editConfig.groupId
         })
@@ -130,8 +131,8 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
             >
               <Input placeholder="/path/to/database.db" />
             </Form.Item>
-            <Form.Item name="ssl" label="打开方式" valuePropName="checked">
-              <Input placeholder="只读模式" disabled />
+            <Form.Item name="readOnly" label="只读模式" valuePropName="checked">
+              <Switch />
             </Form.Item>
           </>
         ) : (

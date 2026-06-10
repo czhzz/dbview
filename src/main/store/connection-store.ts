@@ -61,7 +61,8 @@ export class ConnectionStore {
     // Migrations: add columns that may be missing in existing databases
     const migrations = [
       'ALTER TABLE connections ADD COLUMN oracle_service_name TEXT',
-      'ALTER TABLE connections ADD COLUMN group_id TEXT'
+      'ALTER TABLE connections ADD COLUMN group_id TEXT',
+      'ALTER TABLE connections ADD COLUMN read_only INTEGER DEFAULT 0'
     ]
     for (const sql of migrations) {
       try {
@@ -126,7 +127,7 @@ export class ConnectionStore {
   list(): ConnectionConfig[] {
     const stmt = this.db!.prepare(
       `SELECT id, name, type, host, port, username, password_encrypted,
-              database_name, ssl, oracle_service_name, group_id, created_at, updated_at
+              database_name, ssl, read_only, oracle_service_name, group_id, created_at, updated_at
        FROM connections ORDER BY updated_at DESC`
     )
     const rows: ConnectionConfig[] = []
@@ -142,6 +143,7 @@ export class ConnectionStore {
         password: this.decrypt(r.password_encrypted as string),
         database: (r.database_name as string) || undefined,
         ssl: (r.ssl as number) === 1,
+        readOnly: (r.read_only as number) === 1,
         oracleServiceName: (r.oracle_service_name as string) || undefined,
         groupId: (r.group_id as string) || undefined,
         createdAt: r.created_at as number,
@@ -172,6 +174,7 @@ export class ConnectionStore {
         password: this.decrypt(r.password_encrypted as string),
         database: (r.database_name as string) || undefined,
         ssl: (r.ssl as number) === 1,
+        readOnly: (r.read_only as number) === 1,
         oracleServiceName: (r.oracle_service_name as string) || undefined,
         groupId: (r.group_id as string) || undefined,
         createdAt: r.created_at as number,
@@ -188,8 +191,8 @@ export class ConnectionStore {
     const passwordEncrypted = this.encrypt(input.password)
 
     this.db!.run(
-      `INSERT INTO connections (id, name, type, host, port, username, password_encrypted, database_name, ssl, oracle_service_name, group_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO connections (id, name, type, host, port, username, password_encrypted, database_name, ssl, read_only, oracle_service_name, group_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.name,
@@ -200,6 +203,7 @@ export class ConnectionStore {
         passwordEncrypted,
         input.database || null,
         input.ssl ? 1 : 0,
+        input.readOnly ? 1 : 0,
         input.oracleServiceName || null,
         input.groupId || null,
         now,
@@ -217,7 +221,7 @@ export class ConnectionStore {
 
     this.db!.run(
       `UPDATE connections SET name=?, type=?, host=?, port=?, username=?, password_encrypted=?,
-              database_name=?, ssl=?, oracle_service_name=?, group_id=?, updated_at=? WHERE id=?`,
+              database_name=?, ssl=?, read_only=?, oracle_service_name=?, group_id=?, updated_at=? WHERE id=?`,
       [
         config.name,
         config.type,
@@ -227,6 +231,7 @@ export class ConnectionStore {
         passwordEncrypted,
         config.database || null,
         config.ssl ? 1 : 0,
+        config.readOnly ? 1 : 0,
         config.oracleServiceName || null,
         config.groupId || null,
         now,

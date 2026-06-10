@@ -9,6 +9,7 @@ export interface ConnectionConfig {
   database?: string
   oracleServiceName?: string
   ssl?: boolean
+  readOnly?: boolean
   groupId?: string
   createdAt: number
   updatedAt: number
