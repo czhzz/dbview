@@ -191,37 +191,48 @@ export class SQLiteDriver implements DatabaseDriver {
   }
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {
-    const db = this.getDb()
-
     if (signal?.aborted) {
       throw new Error('查询已取消')
     }
 
-    const start = Date.now()
-    const trimmedSql = sql.trim().toUpperCase()
+    // For SQLite (synchronous driver), we cannot interrupt a running query.
+    // Use a workaround: if the signal fires during execution, close and reopen the DB.
+    const db = this.getDb()
+    let interrupted = false
+    const onAbort = () => { interrupted = true; db.close() }
+    signal?.addEventListener('abort', onAbort, { once: true })
 
-    if (trimmedSql.startsWith('SELECT') || trimmedSql.startsWith('PRAGMA') || trimmedSql.startsWith('WITH') || trimmedSql.startsWith('EXPLAIN')) {
-      // Query - returns rows
-      const stmt = db.prepare(sql)
-      const rows = stmt.all() as Record<string, unknown>[]
-      const columns = rows.length > 0 ? Object.keys(rows[0]) : []
+    try {
+      const start = Date.now()
+      const trimmedSql = sql.trim().toUpperCase()
 
-      return {
-        columns,
-        rows,
-        executionTime: Date.now() - start
+      if (trimmedSql.startsWith('SELECT') || trimmedSql.startsWith('PRAGMA') || trimmedSql.startsWith('WITH') || trimmedSql.startsWith('EXPLAIN')) {
+        // Query - returns rows
+        const stmt = db.prepare(sql)
+        const rows = stmt.all() as Record<string, unknown>[]
+        if (interrupted) throw new Error('查询已取消')
+        const columns = rows.length > 0 ? Object.keys(rows[0]) : []
+
+        return {
+          columns,
+          rows,
+          executionTime: Date.now() - start
+        }
+      } else {
+        // Write operation
+        const result = db.prepare(sql).run()
+        if (interrupted) throw new Error('查询已取消')
+        return {
+          columns: [],
+          rows: [],
+          affectedRows: result.changes,
+          insertId: result.lastInsertRowid as number | undefined,
+          executionTime: Date.now() - start,
+          message: `影响行数: ${result.changes}`
+        }
       }
-    } else {
-      // Write operation
-      const result = db.prepare(sql).run()
-      return {
-        columns: [],
-        rows: [],
-        affectedRows: result.changes,
-        insertId: result.lastInsertRowid as number | undefined,
-        executionTime: Date.now() - start,
-        message: `影响行数: ${result.changes}`
-      }
+    } finally {
+      signal?.removeEventListener('abort', onAbort)
     }
   }
 

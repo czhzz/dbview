@@ -348,8 +348,14 @@ export class OracleDriver implements DatabaseDriver {
       if (signal?.aborted) {
         throw new Error('查询已取消')
       }
+
+      // Listen for abort signal to break the connection mid-query
+      const onAbort = () => { conn.break().catch(() => {}) }
+      signal?.addEventListener('abort', onAbort, { once: true })
+
       const start = Date.now()
       const result: Result<{ [key: string]: unknown }> = await conn.execute(sql)
+      signal?.removeEventListener('abort', onAbort)
 
       const executionTime = Date.now() - start
 

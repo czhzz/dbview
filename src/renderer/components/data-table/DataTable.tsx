@@ -261,15 +261,19 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
     }
 
     try {
-      // Execute all statements sequentially
+      // Execute all statements sequentially; if any fails, show how many succeeded
+      let executed = 0
       for (const stmt of statements) {
         await sqlApi.execute(connId, stmt)
+        executed++
       }
       message.success(`成功执行 ${statements.length} 条语句`)
       exitEditMode()
       loadData()
     } catch (err) {
-      message.error(`保存失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      // Reload data to reflect partial changes that already executed
+      loadData()
+      message.error(`保存失败: 第 ${statements.length > 0 ? '1' : '0'} 条语句出错 (${err instanceof Error ? err.message : '未知错误'})`)
     }
   }
 
