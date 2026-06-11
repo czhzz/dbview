@@ -128,14 +128,31 @@ export const ColumnDialog: React.FC<{
     const defaultVal = values.defaultValue !== undefined && values.defaultValue !== ''
       ? ` DEFAULT ${values.defaultValue}`
       : ''
-    const comment = values.comment ? ` COMMENT '${values.comment.replace(/'/g, "''")}'` : ''
+    const comment = values.comment && dbType === 'mysql' ? ` COMMENT '${values.comment.replace(/'/g, "''")}'` : ''
 
     if (mode === 'add') {
       return `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
     }
-    // MODIFY COLUMN is MySQL-specific; PG uses ALTER COLUMN ... SET DATA TYPE
-    // For now, use MODIFY COLUMN with proper quoting — MySQL only supports this syntax
-    return `ALTER TABLE ${quoteTable(table, schema, dbType)} MODIFY COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
+
+    // MODIFY COLUMN is MySQL-specific syntax
+    if (dbType === 'mysql') {
+      return `ALTER TABLE ${quoteTable(table, schema, dbType)} MODIFY COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
+    }
+
+    // PostgreSQL: ALTER COLUMN ... SET DATA TYPE / SET DEFAULT / SET NOT NULL
+    if (dbType === 'postgresql') {
+      let pgDdl = `ALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET DATA TYPE ${typeStr};`
+      if (!values.nullable) {
+        pgDdl += `\nALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET NOT NULL;`
+      }
+      if (defaultVal) {
+        pgDdl += `\nALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET DEFAULT ${defaultVal};`
+      }
+      return pgDdl
+    }
+
+    // SQLite / Oracle: ADD COLUMN cannot add NOT NULL column (table must be empty)
+    return `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${defaultVal};`
   }
 
   const handleOk = async () => {

@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { useLogStore } from '../../stores/logStore'
 import { useTheme } from '../../hooks/useTheme'
+import { useConnectionStore } from '../../stores/connectionStore'
 import type { SqlLogEntry } from '../../../preload/types'
 
 const categoryConfig: Record<string, { color: string; label: string; darkColor: string }> = {
@@ -188,6 +189,8 @@ const LogEntryRow: React.FC<{
   borderColor: string
 }> = ({ entry, isDark, textColor, secondaryColor, hoverBg, sqlColor, borderColor }) => {
   const [expanded, setExpanded] = React.useState(false)
+  const connections = useConnectionStore((s) => s.connections)
+  const connName = connections.find((c) => c.id === entry.connId)?.name || entry.connId.slice(0, 8)
   const time = new Date(entry.timestamp)
   const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`
 
@@ -251,8 +254,13 @@ const LogEntryRow: React.FC<{
         </span>
 
         {/* Source */}
-        <span style={{ color: secondaryColor, fontSize: 10, flexShrink: 0, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: secondaryColor, fontSize: 10, flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {entry.source}
+        </span>
+
+        {/* Connection name */}
+        <span style={{ color: secondaryColor, fontSize: 10, flexShrink: 0, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {connName}
         </span>
 
         {/* Expand indicator */}
@@ -286,7 +294,7 @@ const LogEntryRow: React.FC<{
             <span>耗时: {entry.executionTime}ms</span>
             <span>行数: {entry.rowCount}</span>
             <span>来源: {entry.source}</span>
-            <span>连接: {entry.connId.slice(0, 8)}...</span>
+            <span>连接: {connName}</span>
           </div>
         </div>
       )}
