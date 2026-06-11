@@ -759,13 +759,10 @@ const DatabaseTree: React.FC = () => {
           key: 'refresh',
           label: '刷新',
           onClick: () => {
-            // Clear children to force reload
-            setTreeData((prev) => updateTreeNode(prev, String(node.key), []))
-            setExpandedKeys((prev) => {
-              const key = String(node.key)
-              // Remove and re-add to trigger reload
-              return prev.filter((k) => k !== key)
-            })
+            const key = String(node.key)
+            // Clear children, then directly reload via loadData
+            setTreeData((prev) => updateTreeNode(prev, key, []))
+            onLoadData(node as DataNode)
           }
         },
         {
