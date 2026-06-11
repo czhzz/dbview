@@ -758,12 +758,17 @@ const DatabaseTree: React.FC = () => {
         {
           key: 'refresh',
           label: '刷新',
-          onClick: () => {
+          onClick: async () => {
             const key = String(node.key)
-            // Directly reload children and update tree data
-            loadChildren(key).then((children) => {
-              setTreeData((prev) => updateTreeNode(prev, key, children))
-            })
+            // Load children and eagerly pre-load sub-folders so antd doesn't
+            // block on its internal loadedKeys cache
+            const children = await loadChildren(key)
+            for (const child of children) {
+              if (!child.isLeaf) {
+                child.children = await loadChildren(String(child.key))
+              }
+            }
+            setTreeData((prev) => updateTreeNode(prev, key, children))
           }
         },
         {
