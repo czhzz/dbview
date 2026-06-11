@@ -106,6 +106,26 @@ interface ColumnFormValues {
   comment?: string
 }
 
+/**
+ * Build a COMMENT ON COLUMN statement for PostgreSQL / Oracle.
+ * MySQL uses inline COMMENT syntax in column definition (handled separately).
+ * SQLite does not support column comments.
+ */
+function buildCommentSql(
+  table: string,
+  schema: string | undefined,
+  column: string,
+  comment: string,
+  dbType: DbType
+): string {
+  const escaped = comment.replace(/'/g, "''")
+  if (dbType === 'oracle') {
+    return `COMMENT ON COLUMN "${schema || ''}"."${table}"."${column}" IS '${escaped}'`
+  }
+  // PostgreSQL
+  return `COMMENT ON COLUMN ${quoteTable(table, schema, dbType)}.${quoteId(column, dbType)} IS '${escaped}'`
+}
+
 export const ColumnDialog: React.FC<{
   open: boolean
   mode: 'add' | 'edit'
@@ -128,15 +148,30 @@ export const ColumnDialog: React.FC<{
     const defaultVal = values.defaultValue !== undefined && values.defaultValue !== ''
       ? ` DEFAULT ${values.defaultValue}`
       : ''
-    const comment = values.comment && dbType === 'mysql' ? ` COMMENT '${values.comment.replace(/'/g, "''")}'` : ''
 
     if (mode === 'add') {
-      return `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
+      let ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}`
+      // MySQL supports inline COMMENT in column definition
+      if (values.comment && dbType === 'mysql') {
+        ddl += ` COMMENT '${values.comment.replace(/'/g, "''")}'`
+      }
+      ddl += ';'
+      // PostgreSQL / Oracle: use COMMENT ON COLUMN (separate statement)
+      if (values.comment && (dbType === 'postgresql' || dbType === 'oracle')) {
+        ddl += `\n${buildCommentSql(table, schema, values.name, values.comment, dbType)};`
+      }
+      // SQLite: no column comment support, silently skip
+      return ddl
     }
 
     // MODIFY COLUMN is MySQL-specific syntax
     if (dbType === 'mysql') {
-      return `ALTER TABLE ${quoteTable(table, schema, dbType)} MODIFY COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}${comment};`
+      let ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} MODIFY COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}`
+      if (values.comment) {
+        ddl += ` COMMENT '${values.comment.replace(/'/g, "''")}'`
+      }
+      ddl += ';'
+      return ddl
     }
 
     // PostgreSQL: ALTER COLUMN ... SET DATA TYPE / SET DEFAULT / SET NOT NULL
@@ -148,11 +183,20 @@ export const ColumnDialog: React.FC<{
       if (defaultVal) {
         pgDdl += `\nALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET DEFAULT ${defaultVal};`
       }
+      if (values.comment) {
+        pgDdl += `\n${buildCommentSql(table, schema, values.name, values.comment, dbType)};`
+      }
       return pgDdl
     }
 
     // SQLite / Oracle: ADD COLUMN cannot add NOT NULL column (table must be empty)
-    return `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${defaultVal};`
+    let ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${defaultVal};`
+    // Oracle supports COMMENT ON COLUMN
+    if (values.comment && dbType === 'oracle') {
+      ddl += `\n${buildCommentSql(table, schema, values.name, values.comment, dbType)};`
+    }
+    // SQLite: no column comment support, silently skip
+    return ddl
   }
 
   const handleOk = async () => {
