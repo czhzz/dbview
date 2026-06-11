@@ -133,6 +133,7 @@ export class PostgreSQLDriver implements DatabaseDriver {
       column_default: string | null
       col_description: string | null
       ordinal_position: number
+      is_pk: boolean
     }>(
       `SELECT c.column_name,
               c.udt_name,
@@ -140,16 +141,28 @@ export class PostgreSQLDriver implements DatabaseDriver {
               c.is_nullable,
               c.column_default,
               pgd.description AS col_description,
-              c.ordinal_position
+              c.ordinal_position,
+              pk.column_name IS NOT NULL AS is_pk
        FROM information_schema.columns c
        LEFT JOIN pg_catalog.pg_statio_all_tables st ON st.schemaname = c.table_schema AND st.relname = c.table_name
        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objoid = st.relid AND pgd.objsubid = c.ordinal_position
+       LEFT JOIN (
+         SELECT kcu.column_name, kcu.table_schema, kcu.table_name
+         FROM information_schema.table_constraints tc
+         JOIN information_schema.key_column_usage kcu
+           ON tc.constraint_name = kcu.constraint_name
+           AND tc.table_schema = kcu.table_schema
+           AND tc.table_name = kcu.table_name
+         WHERE tc.constraint_type = 'PRIMARY KEY'
+       ) pk ON pk.table_schema = c.table_schema
+           AND pk.table_name = c.table_name
+           AND pk.column_name = c.column_name
        WHERE c.table_schema = $1 AND c.table_name = $2
        ORDER BY c.ordinal_position`,
       [schemaName, table]
     )
     return result.rows.map((r) => {
-      let key: ColumnInfo['key'] = ''
+      const key: ColumnInfo['key'] = r.is_pk ? 'PRI' : ''
       return {
         name: r.column_name,
         type: String(r.udt_name),

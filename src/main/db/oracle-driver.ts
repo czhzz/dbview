@@ -135,18 +135,32 @@ export class OracleDriver implements DatabaseDriver {
         column_id: number
         data_default: string | null
         comments: string | null
+        is_pk: boolean
       }>(
         `SELECT c.column_name, c.data_type, c.data_length,
                 c.data_precision, c.data_scale, c.nullable,
                 c.column_id, c.data_default,
-                cm.comments
+                cm.comments,
+                CASE WHEN pk.column_name IS NOT NULL THEN 1 ELSE 0 END AS is_pk
          FROM all_tab_columns c
          LEFT JOIN all_col_comments cm
            ON c.owner = cm.owner AND c.table_name = cm.table_name
            AND c.column_name = cm.column_name
-         WHERE c.owner = :schema AND c.table_name = :table
+         LEFT JOIN (
+           SELECT acc.owner, acc.table_name, acc.column_name
+           FROM all_constraints ac
+           JOIN all_cons_columns acc
+             ON ac.constraint_name = acc.constraint_name
+             AND ac.owner = acc.owner
+           WHERE ac.constraint_type = 'P'
+             AND ac.owner = :schema
+             AND ac.table_name = :table
+         ) pk ON pk.owner = c.owner
+             AND pk.table_name = c.table_name
+             AND pk.column_name = c.column_name
+         WHERE c.owner = :schema2 AND c.table_name = :table2
          ORDER BY c.column_id`,
-        [schemaName, table.toUpperCase()]
+        [schemaName, table.toUpperCase(), schemaName, table.toUpperCase()]
       )
       return result.rows
         ? result.rows.map((r) => {
@@ -156,11 +170,12 @@ export class OracleDriver implements DatabaseDriver {
             } else if (r.data_type === 'NUMBER' && r.data_precision) {
               colType += `(${r.data_precision}${r.data_scale != null ? ',' + r.data_scale : ''})`
             }
+            const key: ColumnInfo['key'] = r.is_pk ? 'PRI' : ''
             return {
               name: r.column_name,
               type: colType,
               nullable: r.nullable === 'Y',
-              key: '' as const,
+              key,
               defaultValue: r.data_default,
               extra: '',
               comment: r.comments || '',
