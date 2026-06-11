@@ -195,11 +195,9 @@ export class SQLiteDriver implements DatabaseDriver {
       throw new Error('查询已取消')
     }
 
-    // For SQLite (synchronous driver), we cannot interrupt a running query.
-    // Use a workaround: if the signal fires during execution, close and reopen the DB.
     const db = this.getDb()
     let interrupted = false
-    const onAbort = () => { interrupted = true; db.close() }
+    const onAbort = () => { interrupted = true; db.interrupt() }
     signal?.addEventListener('abort', onAbort, { once: true })
 
     try {
@@ -210,7 +208,6 @@ export class SQLiteDriver implements DatabaseDriver {
         // Query - returns rows
         const stmt = db.prepare(sql)
         const rows = stmt.all() as Record<string, unknown>[]
-        if (interrupted) throw new Error('查询已取消')
         const columns = rows.length > 0 ? Object.keys(rows[0]) : []
 
         return {
@@ -221,7 +218,6 @@ export class SQLiteDriver implements DatabaseDriver {
       } else {
         // Write operation
         const result = db.prepare(sql).run()
-        if (interrupted) throw new Error('查询已取消')
         return {
           columns: [],
           rows: [],
@@ -231,6 +227,14 @@ export class SQLiteDriver implements DatabaseDriver {
           message: `影响行数: ${result.changes}`
         }
       }
+    } catch (e: any) {
+      // If the query was interrupted via db.interrupt(), throw a clean "cancelled" error.
+      // SQLite's native SQLITE_INTERRUPT error surfaces through better-sqlite3
+      // with a message like "interrupted" or "SQLITE_INTERRUPT".
+      if (interrupted || (e.message && (String(e.message).includes('interrupt') || e.message.includes('SQLITE_INTERRUPT')))) {
+        throw new Error('查询已取消')
+      }
+      throw e
     } finally {
       signal?.removeEventListener('abort', onAbort)
     }
