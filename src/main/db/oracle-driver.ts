@@ -316,7 +316,9 @@ export class OracleDriver implements DatabaseDriver {
     return result.rows ? result.rows.map((r) => ({ name: r.username })) : []
   }
 
-  // ---- executeQuery: needs a dedicated connection for conn.break() cancellation ----
+  // ---- executeQuery: uses Promise.race with AbortSignal for reliable cancellation ----
+  // conn.break() is called server-side to stop the running SQL, while Promise.race
+  // ensures the client-side promise resolves immediately when cancelled.
 
   async executeQuery(sql: string, _params?: unknown[], signal?: AbortSignal): Promise<SQLResult> {
     const conn = await this.getConnection()
@@ -325,13 +327,33 @@ export class OracleDriver implements DatabaseDriver {
         throw new Error('查询已取消')
       }
 
-      // Listen for abort signal to break the connection mid-query
-      const onAbort = () => { conn.break().catch(() => {}) }
-      signal?.addEventListener('abort', onAbort, { once: true })
-
       const start = Date.now()
-      const result: Result<{ [key: string]: unknown }> = await conn.execute(sql)
-      signal?.removeEventListener('abort', onAbort)
+
+      // Set up abort handler: break the connection server-side to cancel the query
+      const onAbort = () => { conn.break().catch(() => {}) }
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true })
+      }
+
+      let result: Result<{ [key: string]: unknown }>
+      try {
+        if (signal) {
+          // Race the query against the abort signal for immediate cancellation response
+          const abortPromise = new Promise<never>((_, reject) => {
+            const onAbortReject = () => reject(new Error('查询已取消'))
+            if (signal.aborted) {
+              onAbortReject()
+              return
+            }
+            signal.addEventListener('abort', onAbortReject, { once: true })
+          })
+          result = await Promise.race([conn.execute(sql), abortPromise])
+        } else {
+          result = await conn.execute(sql)
+        }
+      } finally {
+        signal?.removeEventListener('abort', onAbort)
+      }
 
       const executionTime = Date.now() - start
 
