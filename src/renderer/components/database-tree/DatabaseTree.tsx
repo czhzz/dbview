@@ -75,6 +75,7 @@ const DatabaseTree: React.FC = () => {
   const treeDataRef = useRef(treeData)
   treeDataRef.current = treeData
   const [expandedKeys, setExpandedKeys] = React.useState<React.Key[]>([])
+  const [loadedKeys, setLoadedKeys] = React.useState<React.Key[]>([])
   const prevConnectedRef = React.useRef<Set<string>>(new Set())
 
   // Connection form state
@@ -631,6 +632,7 @@ const DatabaseTree: React.FC = () => {
     const key = String(node.key)
     const children = await loadChildren(key)
     setTreeData((prev) => updateTreeNode(prev, key, children))
+    setLoadedKeys((prev) => (prev.includes(key) ? prev : [...prev, key]))
   }
 
   // Handle expand: auto-connect when expanding an unconnected connection node
@@ -760,9 +762,14 @@ const DatabaseTree: React.FC = () => {
           label: '刷新',
           onClick: () => {
             const key = String(node.key)
-            // Clear children, then directly reload via loadData
+            // Step 1: collapse + clear children + clear loadedKeys
             setTreeData((prev) => updateTreeNode(prev, key, []))
-            onLoadData(node as DataNode)
+            setLoadedKeys((prev) => prev.filter((k) => k !== key))
+            setExpandedKeys((prev) => prev.filter((k) => k !== key))
+            // Step 2: re-expand to trigger loadData via antd Tree
+            setTimeout(() => {
+              setExpandedKeys((prev) => (prev.includes(key) ? prev : [...prev, key]))
+            }, 0)
           }
         },
         {
@@ -985,6 +992,7 @@ const DatabaseTree: React.FC = () => {
         <Tree
           treeData={applyRenderTitle(treeData, renderTitle)}
           loadData={onLoadData}
+          loadedKeys={loadedKeys}
           onDoubleClick={onDoubleClick}
           expandedKeys={expandedKeys}
           onExpand={handleExpand as any}
