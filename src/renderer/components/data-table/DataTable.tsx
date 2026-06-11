@@ -261,19 +261,30 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
     }
 
     try {
-      // Execute all statements sequentially; if any fails, show how many succeeded
+      // Wrap all statements in a transaction for atomicity
+      // BEGIN / COMMIT / ROLLBACK work across MySQL, PostgreSQL, SQLite, and Oracle
+      await sqlApi.execute(connId, 'BEGIN;')
+
       let executed = 0
-      for (const stmt of statements) {
-        await sqlApi.execute(connId, stmt)
-        executed++
+      try {
+        for (const stmt of statements) {
+          await sqlApi.execute(connId, stmt)
+          executed++
+        }
+        await sqlApi.execute(connId, 'COMMIT;')
+      } catch (innerErr) {
+        // Rollback on any failure, then re-throw to show the error message
+        await sqlApi.execute(connId, 'ROLLBACK;').catch(() => {})
+        throw innerErr
       }
+
       message.success(`成功执行 ${statements.length} 条语句`)
       exitEditMode()
       loadData()
     } catch (err) {
-      // Reload data to reflect partial changes that already executed
+      // Reload data to reflect state after the failed transaction (no partial changes)
       loadData()
-      message.error(`保存失败: 第 ${statements.length > 0 ? '1' : '0'} 条语句出错 (${err instanceof Error ? err.message : '未知错误'})`)
+      message.error(`保存失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
   }
 
