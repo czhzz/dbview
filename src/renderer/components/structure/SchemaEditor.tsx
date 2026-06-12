@@ -5,17 +5,47 @@ import { useDbType } from '../../hooks/useDbType'
 import { quoteId, quoteTable, type DbType } from '../../utils/sql-quote'
 import type { ColumnInfo, IndexInfo } from '../../types/database'
 
-// Common SQL column types
-const COLUMN_TYPES = [
-  'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
-  'DECIMAL', 'FLOAT', 'DOUBLE',
-  'VARCHAR', 'CHAR', 'TEXT', 'LONGTEXT', 'MEDIUMTEXT',
-  'DATE', 'DATETIME', 'TIMESTAMP', 'TIME',
-  'BOOLEAN',
-  'BLOB', 'LONGBLOB',
-  'JSON',
-  'ENUM'
-]
+// Common SQL column types — per database engine
+const COLUMN_TYPES_BY_DB: Record<string, string[]> = {
+  mysql: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
+    'DECIMAL', 'FLOAT', 'DOUBLE',
+    'VARCHAR', 'CHAR', 'TEXT', 'LONGTEXT', 'MEDIUMTEXT',
+    'DATE', 'DATETIME', 'TIMESTAMP', 'TIME',
+    'BOOLEAN',
+    'BLOB', 'LONGBLOB',
+    'JSON',
+    'ENUM'
+  ],
+  postgresql: [
+    'INT', 'BIGINT', 'SMALLINT',
+    'DECIMAL', 'FLOAT', 'DOUBLE',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'DATE', 'TIMESTAMP', 'TIMESTAMPTZ', 'TIME',
+    'BOOLEAN',
+    'BYTEA',
+    'JSON', 'JSONB',
+    'UUID',
+    'SERIAL', 'BIGSERIAL'
+  ],
+  oracle: [
+    'INT', 'BIGINT', 'SMALLINT',
+    'DECIMAL', 'FLOAT', 'DOUBLE',
+    'VARCHAR2', 'NVARCHAR2', 'CHAR', 'NCHAR', 'CLOB', 'NCLOB',
+    'DATE', 'TIMESTAMP',
+    'BLOB', 'RAW',
+    'NUMBER'
+  ],
+  sqlite: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
+    'DECIMAL', 'FLOAT', 'DOUBLE',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'DATE', 'DATETIME', 'TIMESTAMP', 'TIME',
+    'BOOLEAN',
+    'BLOB',
+    'JSON'
+  ]
+}
 
 /** Hook that manages schema editing state and renders dialogs */
 export function useSchemaEditor(
@@ -254,7 +284,7 @@ export const ColumnDialog: React.FC<{
           </Form.Item>
           <div style={{ display: 'flex', gap: 12 }}>
             <Form.Item name="type" label="类型" rules={[{ required: true }]} style={{ flex: 2 }}>
-              <Select showSearch options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))} />
+              <Select showSearch options={COLUMN_TYPES_BY_DB[dbType]?.map((t) => ({ value: t, label: t })) ?? []} />
             </Form.Item>
             <Form.Item name="length" label="长度" style={{ flex: 1 }}>
               <InputNumber min={1} placeholder="可选" style={{ width: '100%' }} />

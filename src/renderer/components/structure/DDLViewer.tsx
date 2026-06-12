@@ -3,13 +3,16 @@ import { Skeleton } from 'antd'
 import { EditorView, basicSetup } from 'codemirror'
 import { sql, MySQL } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { getCMDialect } from '../sql-editor/SqlEditor'
+import type { DbType } from '../../utils/sql-quote'
 
 interface Props {
   ddl: string
+  dbType: DbType
   loading?: boolean
 }
 
-const DDLViewer: React.FC<Props> = ({ ddl, loading }) => {
+const DDLViewer: React.FC<Props> = ({ ddl, dbType, loading }) => {
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -22,11 +25,12 @@ const DDLViewer: React.FC<Props> = ({ ddl, loading }) => {
         viewRef.current.destroy()
       }
 
+      const dialect = getCMDialect(dbType)
       viewRef.current = new EditorView({
         doc: ddl,
         extensions: [
           basicSetup,
-          sql({ dialect: MySQL }),
+          sql({ dialect }),
           oneDark,
           EditorView.editable.of(false),
           EditorView.theme({
@@ -47,7 +51,7 @@ const DDLViewer: React.FC<Props> = ({ ddl, loading }) => {
         viewRef.current = null
       }
     }
-  }, [ddl, loading])
+  }, [ddl, dbType, loading])
 
   if (loading) {
     return <Skeleton active style={{ padding: 16 }} />

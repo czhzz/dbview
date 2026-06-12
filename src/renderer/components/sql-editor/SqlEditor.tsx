@@ -42,7 +42,7 @@ function getFormatterLanguage(dbType: string): SqlLanguage {
 }
 
 /** Map db type to CodeMirror SQL dialect */
-function getCMDialect(dbType: string) {
+export function getCMDialect(dbType: string) {
   switch (dbType) {
     case 'postgresql':
       return PostgreSQL
@@ -116,6 +116,9 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
   useEffect(() => {
     if (!editorRef.current) return
 
+    // Preserve current doc content before destroying the old editor
+    const currentDoc = viewRef.current?.state.doc.toString()
+
     if (viewRef.current) {
       viewRef.current.destroy()
     }
@@ -133,7 +136,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
     }
 
     viewRef.current = new EditorView({
-      doc: initialSql || '',
+      doc: currentDoc || initialSql || '',
       extensions: [
         basicSetup,
         sql({ dialect: getCMDialect(dbType) }),

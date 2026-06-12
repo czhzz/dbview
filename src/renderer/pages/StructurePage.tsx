@@ -116,7 +116,7 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
             {
               key: 'ddl',
               label: 'DDL',
-              children: <DDLViewer ddl={ddl} loading={loading} />
+              children: <DDLViewer ddl={ddl} dbType={dbType} loading={loading} />
             }
           ]}
         />

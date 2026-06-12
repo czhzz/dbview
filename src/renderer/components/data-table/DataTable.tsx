@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Table, Button, Space, Typography, Spin, Input, Popconfirm, message } from 'antd'
+import { Table, Button, Space, Typography, Spin, Input, Popconfirm, message, Modal } from 'antd'
 import {
   ReloadOutlined,
   ArrowUpOutlined,
@@ -56,6 +56,14 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   const [newRows, setNewRows] = useState<Record<string, unknown>[]>([])
   const editInputRef = useRef<Input>(null)
 
+  // -- Pending navigation (confirmation dialog on page/sort change while editing) --
+  const [pendingNav, setPendingNav] = useState<{
+    page?: number
+    pageSize?: number
+    sortColumn?: string
+    sortDirection?: 'ASC' | 'DESC'
+  } | null>(null)
+
   // Primary key columns (for generating UPDATE/DELETE)
   const pkColumns = columnMeta.filter((c) => c.key === 'PRI').map((c) => c.name)
 
@@ -98,7 +106,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
     }
   }, [editing, loadColumnMeta])
 
-  const handleSort = (column: string) => {
+  const applySort = useCallback((column: string) => {
     if (sortColumn === column) {
       if (sortDirection === 'ASC') {
         setSortDirection('DESC')
@@ -111,6 +119,14 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
       setSortDirection('ASC')
     }
     setPage(1)
+  }, [sortColumn, sortDirection])
+
+  const handleSort = (column: string) => {
+    if (editing && pendingChanges.size > 0) {
+      setPendingNav({ sortColumn: column, sortDirection: 'ASC', page: 1 })
+      return
+    }
+    applySort(column)
   }
 
   // -- Edit mode handlers --
@@ -292,6 +308,34 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
     exitEditMode()
   }
 
+  // -- Confirm pending navigation when leaving edit mode with unsaved changes --
+
+  const confirmPendingNav = useCallback(() => {
+    if (!pendingNav) return
+    // Apply the pending navigation
+    if (pendingNav.page !== undefined) setPage(pendingNav.page)
+    if (pendingNav.pageSize !== undefined) setPageSize(pendingNav.pageSize)
+    if (pendingNav.sortColumn !== undefined) applySort(pendingNav.sortColumn)
+    setPendingNav(null)
+  }, [pendingNav, applySort])
+
+  const handleConfirmNavigateAway = () => {
+    // User chose "保存并离开" — save first, then navigate
+    handleSaveChanges().then(() => {
+      confirmPendingNav()
+    })
+    setPendingNav(null)
+  }
+
+  const handleDiscardAndNavigate = () => {
+    exitEditMode()
+    confirmPendingNav()
+  }
+
+  const handleCancelNavigate = () => {
+    setPendingNav(null)
+  }
+
   // -- Helpers --
 
   /** Get row data including new rows */
@@ -420,6 +464,28 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   const hasChanges = pendingChanges.size > 0
 
   return (
+    <>
+      <Modal
+        title="未保存的更改"
+        open={!!pendingNav}
+        onCancel={handleCancelNavigate}
+        footer={[
+          <Button key="discard" onClick={handleDiscardAndNavigate}>
+            放弃更改并离开
+          </Button>,
+          <Button key="save" type="primary" onClick={handleConfirmNavigateAway}>
+            保存更改并离开
+          </Button>,
+          <Button key="cancel" onClick={handleCancelNavigate}>
+            取消
+          </Button>
+        ]}
+        width={400}
+      >
+        <Typography.Text>
+          您有 {pendingChanges.size} 项未保存的更改。离开当前页面将丢失这些更改。
+        </Typography.Text>
+      </Modal>
     <div className="tab-content" style={{ padding: '0' }}>
       <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>
         <Space>
@@ -523,6 +589,10 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
             pageSizeOptions: PAGE_SIZE_OPTIONS,
             showTotal: (total) => `共 ${total} 行`,
             onChange: (p, ps) => {
+              if (editing && pendingChanges.size > 0) {
+                setPendingNav({ page: p, pageSize: ps })
+                return
+              }
               setPage(p)
               setPageSize(ps)
             }
@@ -532,6 +602,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
         />
       </div>
     </div>
+    </>
   )
 }
 

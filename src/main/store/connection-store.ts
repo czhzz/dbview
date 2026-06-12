@@ -157,7 +157,7 @@ export class ConnectionStore {
   getById(id: string): ConnectionConfig | null {
     const stmt = this.db!.prepare(
       `SELECT id, name, type, host, port, username, password_encrypted,
-              database_name, ssl, oracle_service_name, group_id, created_at, updated_at
+              database_name, ssl, read_only, oracle_service_name, group_id, created_at, updated_at
        FROM connections WHERE id = ?`
     )
     stmt.bind([id])
