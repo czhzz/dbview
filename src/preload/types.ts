@@ -38,7 +38,7 @@ export interface ElectronAPI {
   }
   history: {
     add: (entry: Omit<HistoryEntry, 'id' | 'executedAt'>) => Promise<HistoryEntry>
-    list: (connId?: string, search?: string, limit?: number) => Promise<HistoryEntry[]>
+    list: (connId?: string, search?: string, limit?: number, offset?: number) => Promise<{ items: HistoryEntry[]; total: number }>
     delete: (id: number) => Promise<{ success: boolean }>
     clear: (connId?: string) => Promise<{ success: boolean }>
   }

@@ -10,7 +10,7 @@ const api: ElectronAPI = {
   },
   history: {
     add: (entry) => ipcRenderer.invoke('history:add', entry),
-    list: (connId, search, limit) => ipcRenderer.invoke('history:list', connId, search, limit),
+    list: (connId, search, limit, offset) => ipcRenderer.invoke('history:list', connId, search, limit, offset),
     delete: (id) => ipcRenderer.invoke('history:delete', id),
     clear: (connId) => ipcRenderer.invoke('history:clear', connId)
   },

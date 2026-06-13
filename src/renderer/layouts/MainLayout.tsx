@@ -223,7 +223,7 @@ const MainLayout: React.FC = () => {
                   </Tooltip>
                 </div>
               </div>
-              <DatabaseTree />
+              <DatabaseTree onSqlSelect={(sql) => openTab('query', sql)} />
             </div>
 
             {/* Resize handle */}

@@ -29,7 +29,8 @@
     "testSuccess": "连接成功",
     "testFailed": "连接失败",
     "deleteConfirm": "确认删除此连接？",
-    "group": "分组"
+    "group": "分组",
+    "searchPlaceholder": "搜索连接...",
   },
   "database": {
     "databases": "数据库",
@@ -39,6 +40,9 @@
     "indexes": "索引",
     "procedures": "存储过程",
     "functions": "函数"
+  },
+  "databaseTree": {
+    "noConnections": "暂无连接，请先添加数据库连接"
   },
   "table": {
     "data": "数据",

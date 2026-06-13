@@ -14,9 +14,9 @@ export function registerHistoryIpc(): void {
     return store.add(entry)
   })
 
-  ipcMain.handle('history:list', async (_event, connId?: string, search?: string, limit?: number) => {
+  ipcMain.handle('history:list', async (_event, connId?: string, search?: string, limit?: number, offset?: number) => {
     if (!store) throw new Error('HistoryStore not initialized')
-    return store.list(connId, search, limit)
+    return store.list(connId, search, limit, offset)
   })
 
   ipcMain.handle('history:delete', async (_event, id: number) => {

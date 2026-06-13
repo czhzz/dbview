@@ -36,8 +36,8 @@ const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
   const loadHistory = useCallback(async () => {
     setLoading(true)
     try {
-      const list = await historyApi.list(connId, search || undefined)
-      setEntries(list)
+      const result = await historyApi.list(connId, search || undefined)
+      setEntries(result.items)
     } catch {
       // Silently fail — history is non-critical
     } finally {

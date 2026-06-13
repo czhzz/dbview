@@ -1,5 +1,5 @@
-import React, { useCallback, useRef } from 'react'
-import { Tree, Dropdown, message, Popconfirm } from 'antd'
+import React, { useCallback, useRef, useState } from 'react'
+import { Tree, Dropdown, message, Popconfirm, Input } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   DatabaseOutlined,
@@ -28,6 +28,7 @@ import { useUIStore } from '../../stores/uiStore'
 import { createNewTab, useEditorStore } from '../../stores/editorStore'
 import ConnectionForm from '../connection/ConnectionForm'
 import type { ConnectionConfig, ConnectionConfigInput, ConnectionGroup } from '../../types/connection'
+import { useTranslation } from 'react-i18next'
 
 const iconMap: Record<string, React.ReactNode> = {
   database: <DatabaseOutlined style={{ color: '#1677ff' }} />,
@@ -58,6 +59,7 @@ const DB_TYPE_COLORS: Record<string, string> = {
 }
 
 const DatabaseTree: React.FC = () => {
+  const { t } = useTranslation()
   const {
     connections,
     connectedIds,
@@ -70,6 +72,7 @@ const DatabaseTree: React.FC = () => {
   } = useConnectionStore()
   const { openTab } = useUIStore()
   const { addTab } = useEditorStore()
+  const [searchText, setSearchText] = useState('')
 
   const [treeData, setTreeData] = React.useState<DataNode[]>([])
   const treeDataRef = useRef(treeData)
@@ -128,9 +131,13 @@ const DatabaseTree: React.FC = () => {
       }
       collect(prev)
 
+      const filteredConns = searchText
+        ? connections.filter((c) => c.name.toLowerCase().includes(searchText.toLowerCase()))
+        : connections
+
       const groupedConns = new Map<string, ConnectionConfig[]>()
       const ungroupedConns: ConnectionConfig[] = []
-      for (const conn of connections) {
+      for (const conn of filteredConns) {
         if (conn.groupId) {
           const list = groupedConns.get(conn.groupId) || []
           list.push(conn)
@@ -168,7 +175,7 @@ const DatabaseTree: React.FC = () => {
 
       return roots
     })
-  }, [connections, groups])
+  }, [connections, groups, searchText])
 
   // (Optional) Update connection-node icon color when connectedIds changes.
   // Kept conservative: only re-create the node object when the connected flag
@@ -375,7 +382,8 @@ const DatabaseTree: React.FC = () => {
             })
           }
         } else if (folderType === 'queries') {
-          const histories = await historyApi.list(connId, undefined, 50)
+          const result = await historyApi.list(connId, undefined, 50)
+          const histories = result.items
           for (const h of histories) {
             const shortSql = h.sql.length > 60 ? h.sql.substring(0, 60) + '...' : h.sql
             children.push({
@@ -976,6 +984,19 @@ const DatabaseTree: React.FC = () => {
 
   return (
     <div className="database-tree" style={{ overflow: 'auto', flex: 1 }}>
+      {/* Search input */}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>
+        <Input.Search
+          size="small"
+          placeholder={t('databaseTree.searchPlaceholder') || '搜索连接...'}
+          allowClear
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          onSearch={(value) => setSearchText(value)}
+          style={{ width: '100%' }}
+        />
+      </div>
+
       {treeData.length === 0 ? (
         <div
           style={{
@@ -985,7 +1006,7 @@ const DatabaseTree: React.FC = () => {
             fontSize: 13
           }}
         >
-          暂无连接，请先添加数据库连接
+          {searchText ? '未找到匹配的连接' : (t('databaseTree.noConnections') || '暂无连接，请先添加数据库连接')}
         </div>
       ) : (
         <Tree

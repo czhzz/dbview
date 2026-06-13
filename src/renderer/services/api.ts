@@ -22,8 +22,8 @@ export const fileApi = {
 export const historyApi = {
   add: (entry: Parameters<typeof getAPI>[0]['history']['add'][0]) =>
     getAPI().history.add(entry),
-  list: (connId?: string, search?: string, limit?: number) =>
-    getAPI().history.list(connId, search, limit),
+  list: (connId?: string, search?: string, limit?: number, offset?: number) =>
+    getAPI().history.list(connId, search, limit, offset),
   delete: (id: number) => getAPI().history.delete(id),
   clear: (connId?: string) => getAPI().history.clear(connId)
 }

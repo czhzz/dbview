@@ -1,0 +1,15 @@
+Implement Week 2 P1 tasks for dbview project:
+
+1. P1-5 query-history-pagination (3h)
+   - HistoryStore.list() add pagination support
+   - QueryHistory component add load more button
+   - DatabaseTree query folder show more entry
+
+2. P1-7 connection-entry-unify (4h)
+   - Compare ConnectionPage and DatabaseTree CRUD differences
+   - Ensure DatabaseTree covers all functions
+   - Delete ConnectionPage.tsx and related references
+   - Verify regression
+
+Work in: C:\Users\zhiho\Documents\workspace\claude-project\dbview
+After each task, commit with descriptive message.

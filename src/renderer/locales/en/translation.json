@@ -29,7 +29,8 @@
     "testSuccess": "Connection successful",
     "testFailed": "Connection failed",
     "deleteConfirm": "Delete this connection?",
-    "group": "Group"
+    "group": "Group",
+    "searchPlaceholder": "Search connections...",
   },
   "database": {
     "databases": "Databases",

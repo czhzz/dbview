@@ -88,9 +88,10 @@ export class HistoryStore {
     return { id, ...entry, executedAt: now }
   }
 
-  list(connId?: string, search?: string, limit = 50): HistoryEntry[] {
+  list(connId?: string, search?: string, limit = 50, offset = 0): { items: HistoryEntry[], total: number } {
     let query = `SELECT id, sql, conn_id, conn_type, execution_time, row_count, executed_at
                   FROM query_history`
+    const countQuery = 'SELECT COUNT(*) as cnt FROM query_history'
     const conditions: string[] = []
     const params: unknown[] = []
 
@@ -102,14 +103,23 @@ export class HistoryStore {
       conditions.push('sql LIKE ?')
       params.push(`%${search}%`)
     }
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ')
-    }
-    query += ' ORDER BY executed_at DESC LIMIT ?'
-    params.push(limit)
+
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : ''
+
+    // Get total count
+    const countStmt = this.db!.prepare(countQuery + whereClause)
+    countStmt.bind(params)
+    countStmt.step()
+    const countRow = countStmt.getAsObject() as Record<string, unknown>
+    const total = countRow.cnt as number
+    countStmt.free()
+
+    // Get paginated data
+    query += whereClause + ' ORDER BY executed_at DESC LIMIT ? OFFSET ?'
+    const dataParams = [...params, limit, offset]
 
     const stmt = this.db!.prepare(query)
-    stmt.bind(params)
+    stmt.bind(dataParams)
 
     const rows: HistoryEntry[] = []
     while (stmt.step()) {
@@ -125,7 +135,7 @@ export class HistoryStore {
       })
     }
     stmt.free()
-    return rows
+    return { items: rows, total }
   }
 
   delete(id: number): void {
