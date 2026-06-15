@@ -30,7 +30,7 @@
     "testFailed": "连接失败",
     "deleteConfirm": "确认删除此连接？",
     "group": "分组",
-    "searchPlaceholder": "搜索连接...",
+    "searchPlaceholder": "搜索连接..."
   },
   "database": {
     "databases": "数据库",
@@ -121,7 +121,10 @@
     "clearConfirm": "确定清空所有历史记录？",
     "deleteConfirm": "删除此条记录？",
     "empty": "暂无查询历史",
-    "emptySearch": "没有匹配的记录"
+    "emptySearch": "没有匹配的记录",
+    "loadMore": "加载更多",
+    "loadedSummary": "共 {{total}} 条记录，已加载 {{loaded}} 条",
+    "viewMore": "查看更多..."
   },
   "settings": {
     "title": "设置",

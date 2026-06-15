@@ -30,7 +30,7 @@
     "testFailed": "Connection failed",
     "deleteConfirm": "Delete this connection?",
     "group": "Group",
-    "searchPlaceholder": "Search connections...",
+    "searchPlaceholder": "Search connections..."
   },
   "database": {
     "databases": "Databases",
@@ -118,7 +118,10 @@
     "clearConfirm": "Clear all history records?",
     "deleteConfirm": "Delete this record?",
     "empty": "No query history",
-    "emptySearch": "No matching records"
+    "emptySearch": "No matching records",
+    "loadMore": "Load More",
+    "loadedSummary": "{{total}} records, {{loaded}} loaded",
+    "viewMore": "View More..."
   },
   "settings": {
     "title": "Settings",

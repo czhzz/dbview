@@ -18,6 +18,7 @@ import {
   EditOutlined,
   CopyOutlined,
   DeleteOutlined,
+  HistoryOutlined,
   PlusOutlined,
   PlaySquareOutlined
 } from '@ant-design/icons'
@@ -397,6 +398,16 @@ const DatabaseTree: React.FC = () => {
               sql: h.sql
             })
           }
+          // Add "View More..." link at bottom
+          children.push({
+            key: `query-more:${connId}:${schema}`,
+            title: '查看更多...',
+            icon: <HistoryOutlined style={{ color: '#1677ff' }} />,
+            isLeaf: true,
+            connId,
+            itemType: 'query-more' as const,
+            schema
+          })
         } else if (folderType === 'users') {
           const users = await databaseApi.getUsers(connId, schema).catch(() => [])
           for (const u of users) {
@@ -966,6 +977,13 @@ const DatabaseTree: React.FC = () => {
         connId: connId || '',
         schema: node.schema
       })
+    } else if (node.itemType === 'query-more') {
+      // Dispatch event to open QueryHistory panel in the SQL editor
+      window.dispatchEvent(
+        new CustomEvent('dbview:show-history', {
+          detail: { connId: node.connId }
+        })
+      )
     }
   }
 

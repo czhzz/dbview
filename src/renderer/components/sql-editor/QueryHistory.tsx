@@ -3,12 +3,15 @@ import { Input, List, Typography, Space, Button, Popconfirm, Empty } from 'antd'
 import { SearchOutlined, DeleteOutlined, CloseOutlined, ClearOutlined } from '@ant-design/icons'
 import { historyApi } from '../../services/api'
 import type { HistoryEntry } from '../../../preload/types'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   connId: string
   onLoadSql: (sql: string) => void
   onClose: () => void
 }
+
+const PAGE_SIZE = 50
 
 const DB_TYPE_LABELS: Record<string, string> = {
   mysql: 'MySQL',
@@ -29,35 +32,60 @@ function truncateSql(sql: string, maxLen = 80): string {
 }
 
 const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
+  const { t } = useTranslation()
   const [entries, setEntries] = useState<HistoryEntry[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [total, setTotal] = useState(0)
+  const pageRef = useRef(0)
 
-  const loadHistory = useCallback(async () => {
-    setLoading(true)
+  const loadHistory = useCallback(async (page: number) => {
+    if (page === 0) {
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
     try {
-      const result = await historyApi.list(connId, search || undefined)
-      setEntries(result.items)
+      const result = await historyApi.list(connId, search || undefined, PAGE_SIZE, page * PAGE_SIZE)
+      if (page === 0) {
+        setEntries(result.items)
+      } else {
+        setEntries((prev) => [...prev, ...result.items])
+      }
+      setTotal(result.total)
+      pageRef.current = page
     } catch {
       // Silently fail — history is non-critical
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }, [connId, search])
 
   useEffect(() => {
-    loadHistory()
+    pageRef.current = 0
+    loadHistory(0)
+  }, [loadHistory])
+
+  const handleLoadMore = useCallback(() => {
+    loadHistory(pageRef.current + 1)
   }, [loadHistory])
 
   const handleDelete = useCallback(async (id: number) => {
     await historyApi.delete(id)
     setEntries((prev) => prev.filter((e) => e.id !== id))
+    setTotal((prev) => prev - 1)
   }, [])
 
   const handleClearAll = useCallback(async () => {
     await historyApi.clear(connId)
     setEntries([])
+    setTotal(0)
+    pageRef.current = 0
   }, [connId])
+
+  const hasMore = entries.length < total
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -74,31 +102,34 @@ const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
       >
         <Space>
           <Typography.Text strong style={{ fontSize: 13 }}>
-            查询历史
+            {t('queryHistory.title')}
           </Typography.Text>
           <Input
             size="small"
-            placeholder="搜索 SQL..."
+            placeholder={t('queryHistory.search')}
             prefix={<SearchOutlined />}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              pageRef.current = 0
+            }}
             style={{ width: 200 }}
             allowClear
           />
         </Space>
         <Space>
           <Popconfirm
-            title="确定清空所有历史记录？"
+            title={t('queryHistory.clearConfirm')}
             onConfirm={handleClearAll}
-            okText="确定"
-            cancelText="取消"
+            okText={t('common.confirm')}
+            cancelText={t('common.cancel')}
           >
             <Button icon={<ClearOutlined />} size="small" danger>
-              清空
+              {t('queryHistory.clearAll')}
             </Button>
           </Popconfirm>
           <Button icon={<CloseOutlined />} size="small" onClick={onClose}>
-            关闭
+            {t('queryHistory.close')}
           </Button>
         </Space>
       </div>
@@ -107,7 +138,7 @@ const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
       <div style={{ flex: 1, overflow: 'auto' }}>
         {entries.length === 0 ? (
           <Empty
-            description={search ? '没有匹配的记录' : '暂无查询历史'}
+            description={search ? t('queryHistory.emptySearch') : t('queryHistory.empty')}
             style={{ marginTop: 40 }}
           />
         ) : (
@@ -145,14 +176,14 @@ const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
                     <span>{entry.executionTime}ms</span>
                     <span>{entry.rowCount} 行</span>
                     <Popconfirm
-                      title="删除此条记录？"
+                      title={t('queryHistory.deleteConfirm')}
                       onConfirm={(e) => {
                         e?.stopPropagation()
                         handleDelete(entry.id)
                       }}
                       onCancel={(e) => e?.stopPropagation()}
-                      okText="确定"
-                      cancelText="取消"
+                      okText={t('common.confirm')}
+                      cancelText={t('common.cancel')}
                     >
                       <DeleteOutlined
                         style={{ color: '#ff4d4f', fontSize: 11 }}
@@ -163,7 +194,24 @@ const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
                 </div>
               </List.Item>
             )}
-          />
+          >
+            {/* Summary + Load more footer */}
+            <div style={{ textAlign: 'center', padding: '8px 12px', borderTop: '1px solid #f0f0f0' }}>
+              <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: hasMore ? 8 : 0 }}>
+                {t('queryHistory.loadedSummary', { total, loaded: entries.length })}
+              </Typography.Text>
+              {hasMore && (
+                <Button
+                  size="small"
+                  type="default"
+                  loading={loadingMore}
+                  onClick={handleLoadMore}
+                >
+                  {t('queryHistory.loadMore')}
+                </Button>
+              )}
+            </div>
+          </List>
         )}
       </div>
     </div>

@@ -253,6 +253,19 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
     setActiveResultTab('results')
   }, [])
 
+  // Listen for dbview:show-history event (from DatabaseTree "查看更多..." link)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.connId === connId) {
+        setHistoryVisible(true)
+        setActiveResultTab('results')
+      }
+    }
+    window.addEventListener('dbview:show-history', handler)
+    return () => window.removeEventListener('dbview:show-history', handler)
+  }, [connId])
+
   // -- Render result table --------------------------------------------------
 
   const renderResultTable = (result: SQLResult) => {
