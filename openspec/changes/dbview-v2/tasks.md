@@ -32,15 +32,15 @@
 ## 第2周：P1 收尾 + P2 国际化（15h）
 
 ### P1-5 query-history-pagination（3h）
-- [ ] HistoryStore.list() 新增分页参数支持
-- [ ] QueryHistory 组件新增"加载更多"按钮
-- [ ] DatabaseTree 查询文件夹显示更多入口
+- [x] HistoryStore.list() 新增分页参数支持
+- [x] QueryHistory 组件新增"加载更多"按钮
+- [x] DatabaseTree 查询文件夹显示更多入口
 
 ### P1-7 connection-entry-unify（4h）
-- [ ] 逐一比对 ConnectionPage 和 DatabaseTree 的 CRUD 功能差异
-- [ ] 确保 DatabaseTree 覆盖所有功能
-- [ ] 删除 ConnectionPage.tsx 和相关引用
-- [ ] 验证回归
+- [x] 逐一比对 ConnectionPage 和 DatabaseTree 的 CRUD 功能差异
+- [x] 确保 DatabaseTree 覆盖所有功能
+- [x] 删除 ConnectionPage.tsx 和相关引用
+- [x] 验证回归
 
 ### P2-6 i18n-activation（8h）
 - [ ] 逐个组件扫描硬编码中文，替换为 `t('key')`

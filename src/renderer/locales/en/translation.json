@@ -32,6 +32,9 @@
     "group": "Group",
     "searchPlaceholder": "Search connections..."
   },
+  "databaseTree": {
+    "noConnections": "No connections. Add a database connection first."
+  },
   "database": {
     "databases": "Databases",
     "tables": "Tables",
