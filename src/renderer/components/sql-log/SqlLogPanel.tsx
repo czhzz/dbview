@@ -8,18 +8,20 @@ import {
   CloseCircleOutlined,
   CodeOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useLogStore } from '../../stores/logStore'
 import { useTheme } from '../../hooks/useTheme'
 import { useConnectionStore } from '../../stores/connectionStore'
 import type { SqlLogEntry } from '../../../preload/types'
 
-const categoryConfig: Record<string, { color: string; label: string; darkColor: string }> = {
-  user: { color: '#1677ff', label: '用户', darkColor: '#1677ff' },
-  system: { color: '#fa8c16', label: '系统', darkColor: '#ffa940' },
-  metadata: { color: '#8c8c8c', label: '元数据', darkColor: '#a0a0a0' }
+const categoryConfig: Record<string, { color: string; i18nKey: string; darkColor: string }> = {
+  user: { color: '#1677ff', i18nKey: 'sqlLog.categoryUser', darkColor: '#1677ff' },
+  system: { color: '#fa8c16', i18nKey: 'sqlLog.categorySystem', darkColor: '#ffa940' },
+  metadata: { color: '#8c8c8c', i18nKey: 'sqlLog.categoryMetadata', darkColor: '#a0a0a0' }
 }
 
 const SqlLogPanel: React.FC = () => {
+  const { t } = useTranslation()
   const {
     logs,
     panelVisible,
@@ -118,7 +120,7 @@ const SqlLogPanel: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <CodeOutlined style={{ color: secondaryColor }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: textColor }}>SQL 日志</span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: textColor }}>{t('sqlLog.title')}</span>
           <span style={{ fontSize: 11, color: secondaryColor }}>({filteredLogs.length})</span>
 
           {/* Filter buttons */}
@@ -131,14 +133,14 @@ const SqlLogPanel: React.FC = () => {
                 style={{ fontSize: 11, height: 20, padding: '0 6px' }}
                 onClick={() => setFilter(f)}
               >
-                {f === 'all' ? '全部' : categoryConfig[f].label}
+                {f === 'all' ? t('sqlLog.filterAll') : t(categoryConfig[f].i18nKey)}
               </Button>
             ))}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 4 }}>
-          <Tooltip title="清空日志">
+          <Tooltip title={t('sqlLog.clearLogs')}>
             <Button
               type="text"
               size="small"
@@ -150,7 +152,7 @@ const SqlLogPanel: React.FC = () => {
               }}
             />
           </Tooltip>
-          <Tooltip title="折叠面板">
+          <Tooltip title={t('sqlLog.collapse')}>
             <Button
               type="text"
               size="small"
@@ -166,7 +168,7 @@ const SqlLogPanel: React.FC = () => {
       <div ref={listRef} style={{ flex: 1, overflow: 'auto', fontSize: 12 }}>
         {filteredLogs.length === 0 ? (
           <div style={{ padding: '20px 0' }}>
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无日志" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('sqlLog.noLogs')} />
           </div>
         ) : (
           filteredLogs.map((entry) => (
@@ -188,6 +190,7 @@ const LogEntryRow: React.FC<{
   sqlColor: string
   borderColor: string
 }> = ({ entry, isDark, textColor, secondaryColor, hoverBg, sqlColor, borderColor }) => {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = React.useState(false)
   const connections = useConnectionStore((s) => s.connections)
   const connName = connections.find((c) => c.id === entry.connId)?.name || entry.connId.slice(0, 8)
@@ -196,6 +199,7 @@ const LogEntryRow: React.FC<{
 
   const cat = categoryConfig[entry.category] || categoryConfig.metadata
   const tagColor = isDark ? cat.darkColor : cat.color
+  const catLabel = t(cat.i18nKey)
 
   return (
     <div
@@ -230,7 +234,7 @@ const LogEntryRow: React.FC<{
           color={tagColor}
           style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0, borderRadius: 3 }}
         >
-          {cat.label}
+          {catLabel}
         </Tag>
 
         {/* SQL text (truncated) */}
@@ -287,14 +291,14 @@ const LogEntryRow: React.FC<{
           </pre>
           {entry.error && (
             <div style={{ marginTop: 6, color: '#ff4d4f', fontSize: 11 }}>
-              错误: {entry.error}
+              {t('sqlLog.error')}: {entry.error}
             </div>
           )}
           <div style={{ marginTop: 4, fontSize: 11, color: secondaryColor, display: 'flex', gap: 16 }}>
-            <span>耗时: {entry.executionTime}ms</span>
-            <span>行数: {entry.rowCount}</span>
-            <span>来源: {entry.source}</span>
-            <span>连接: {connName}</span>
+            <span>{t('sqlLog.executionTime')}: {entry.executionTime}ms</span>
+            <span>{t('sqlLog.rowCount')}: {entry.rowCount}</span>
+            <span>{t('sqlLog.source')}: {entry.source}</span>
+            <span>{t('sqlLog.connection')}: {connName}</span>
           </div>
         </div>
       )}

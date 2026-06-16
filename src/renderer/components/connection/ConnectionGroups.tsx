@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { Button, Input, List, Popconfirm, Space, Typography, message } from 'antd'
 import { FolderAddOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { connectionApi } from '../../services/api'
 import type { ConnectionGroup } from '../../types/connection'
 
@@ -10,6 +11,7 @@ interface Props {
 }
 
 const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
+  const { t } = useTranslation()
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -23,9 +25,9 @@ const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
       setCreating(false)
       onRefresh()
     } catch {
-      message.error('创建分组失败')
+      message.error(t('connectionGroups.createFailed'))
     }
-  }, [newName, onRefresh])
+  }, [newName, onRefresh, t])
 
   const handleRename = useCallback(async (id: string) => {
     if (!editName.trim()) return
@@ -34,29 +36,29 @@ const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
       setEditingId(null)
       onRefresh()
     } catch {
-      message.error('重命名失败')
+      message.error(t('connectionGroups.renameFailed'))
     }
-  }, [editName, onRefresh])
+  }, [editName, onRefresh, t])
 
   const handleDelete = useCallback(async (id: string) => {
     try {
       await connectionApi.deleteGroup(id)
       onRefresh()
     } catch {
-      message.error('删除分组失败')
+      message.error(t('connectionGroups.deleteFailed'))
     }
-  }, [onRefresh])
+  }, [onRefresh, t])
 
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <Typography.Text strong style={{ fontSize: 13 }}>分组管理</Typography.Text>
+        <Typography.Text strong style={{ fontSize: 13 }}>{t('connectionGroups.title')}</Typography.Text>
         <Button
           size="small"
           icon={<FolderAddOutlined />}
           onClick={() => setCreating(true)}
         >
-          新建分组
+          {t('connectionGroups.newGroup')}
         </Button>
       </div>
 
@@ -64,14 +66,14 @@ const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <Input
             size="small"
-            placeholder="分组名称"
+            placeholder={t('connectionGroups.groupNamePlaceholder')}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onPressEnter={handleCreate}
             autoFocus
           />
-          <Button size="small" type="primary" onClick={handleCreate}>确定</Button>
-          <Button size="small" onClick={() => { setCreating(false); setNewName('') }}>取消</Button>
+          <Button size="small" type="primary" onClick={handleCreate}>{t('common.confirm')}</Button>
+          <Button size="small" onClick={() => { setCreating(false); setNewName('') }}>{t('common.cancel')}</Button>
         </div>
       )}
 
@@ -84,8 +86,8 @@ const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
             actions={
               editingId === group.id
                 ? [
-                    <Button key="ok" size="small" type="primary" onClick={() => handleRename(group.id)}>确定</Button>,
-                    <Button key="cancel" size="small" onClick={() => setEditingId(null)}>取消</Button>
+                    <Button key="ok" size="small" type="primary" onClick={() => handleRename(group.id)}>{t('common.confirm')}</Button>,
+                    <Button key="cancel" size="small" onClick={() => setEditingId(null)}>{t('common.cancel')}</Button>
                   ]
                 : [
                     <Button
@@ -97,10 +99,10 @@ const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
                     />,
                     <Popconfirm
                       key="delete"
-                      title="删除此分组？分组内的连接将变为无分组状态"
+                      title={t('connectionGroups.deleteConfirm')}
                       onConfirm={() => handleDelete(group.id)}
-                      okText="删除"
-                      cancelText="取消"
+                      okText={t('common.delete')}
+                      cancelText={t('common.cancel')}
                     >
                       <Button type="text" size="small" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
@@ -119,7 +121,7 @@ const ConnectionGroups: React.FC<Props> = ({ groups, onRefresh }) => {
             )}
           </List.Item>
         )}
-        locale={{ emptyText: '暂无分组' }}
+        locale={{ emptyText: t('connectionGroups.noGroups') }}
       />
     </div>
   )

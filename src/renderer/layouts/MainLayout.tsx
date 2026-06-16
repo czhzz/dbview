@@ -11,6 +11,7 @@ import {
   CodeOutlined,
   FolderOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/uiStore'
 import DatabaseTree from '../components/database-tree/DatabaseTree'
 import ConnectionGroups from '../components/connection/ConnectionGroups'
@@ -27,6 +28,7 @@ import { connectionApi } from '../services/api'
 import type { ConnectionGroup } from '../types/connection'
 
 const MainLayout: React.FC = () => {
+  const { t } = useTranslation()
   const {
     sidebarWidth,
     setSidebarWidth,
@@ -120,9 +122,9 @@ const MainLayout: React.FC = () => {
   const { mode: themeMode, setMode: setThemeMode } = useTheme()
 
   const themeMenuItems = [
-    { key: 'light', label: '☀️ 浅色', disabled: themeMode === 'light' },
-    { key: 'dark', label: '🌙 深色', disabled: themeMode === 'dark' },
-    { key: 'system', label: '💻 跟随系统', disabled: themeMode === 'system' }
+    { key: 'light', label: `☀️ ${t('settings.themeLight')}`, disabled: themeMode === 'light' },
+    { key: 'dark', label: `🌙 ${t('settings.themeDark')}`, disabled: themeMode === 'dark' },
+    { key: 'system', label: `💻 ${t('settings.themeSystem')}`, disabled: themeMode === 'system' }
   ]
 
   return (
@@ -144,7 +146,7 @@ const MainLayout: React.FC = () => {
               gap: 8
             }}
           >
-            <Tooltip title="展开侧边栏" placement="right">
+            <Tooltip title={t('mainLayout.expandSidebar')} placement="right">
               <Button
                 type="text"
                 size="small"
@@ -152,7 +154,7 @@ const MainLayout: React.FC = () => {
                 onClick={toggleSidebar}
               />
             </Tooltip>
-            <Tooltip title="新建连接" placement="right">
+            <Tooltip title={t('connection.create')} placement="right">
               <Button
                 type="text"
                 size="small"
@@ -192,10 +194,10 @@ const MainLayout: React.FC = () => {
               >
                 <Typography.Text strong style={{ fontSize: 13 }}>
                   <DatabaseOutlined style={{ marginRight: 6 }} />
-                  连接
+                  {t('connection.title')}
                 </Typography.Text>
                 <div style={{ display: 'flex', gap: 2 }}>
-                  <Tooltip title="新建连接">
+                  <Tooltip title={t('connection.create')}>
                     <Button
                       type="text"
                       size="small"
@@ -205,7 +207,7 @@ const MainLayout: React.FC = () => {
                       }}
                     />
                   </Tooltip>
-                  <Tooltip title="分组管理">
+                  <Tooltip title={t('connection.group')}>
                     <Button
                       type="text"
                       size="small"
@@ -213,7 +215,7 @@ const MainLayout: React.FC = () => {
                       onClick={() => setGroupsModalOpen(true)}
                     />
                   </Tooltip>
-                  <Tooltip title="折叠侧边栏">
+                  <Tooltip title={t('mainLayout.collapseSidebar')}>
                     <Button
                       type="text"
                       size="small"
@@ -251,8 +253,8 @@ const MainLayout: React.FC = () => {
               color: '#999'
             }}>
               <DatabaseOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-              <div style={{ marginTop: 16, fontSize: 16 }}>欢迎使用 DBView</div>
-              <div style={{ marginTop: 8, fontSize: 13 }}>从左侧选择连接开始使用</div>
+              <div style={{ marginTop: 16, fontSize: 16 }}>{t('mainLayout.welcome')}</div>
+              <div style={{ marginTop: 8, fontSize: 13 }}>{t('mainLayout.welcomeHint')}</div>
             </div>
           ) : (
             <Tabs
@@ -299,9 +301,9 @@ const MainLayout: React.FC = () => {
           color: '#999'
         }}
       >
-        <span>{statusText || '就绪'}</span>
+        <span>{statusText || t('app.status.ready')}</span>
         <div style={{ display: 'flex', gap: 4 }}>
-          <Tooltip title={panelVisible ? '隐藏 SQL 日志' : '显示 SQL 日志'}>
+          <Tooltip title={panelVisible ? t('mainLayout.hideSqlLog') : t('mainLayout.showSqlLog')}>
             <Button
               type="text"
               size="small"
@@ -318,7 +320,7 @@ const MainLayout: React.FC = () => {
             trigger={['click']}
           >
             <Button type="text" size="small" style={{ fontSize: 11, color: '#999', height: 20, padding: '0 4px' }}>
-              <BulbOutlined /> {themeMode === 'dark' ? '深色' : themeMode === 'light' ? '浅色' : '自动'}
+              <BulbOutlined /> {themeMode === 'dark' ? t('settings.themeDark') : themeMode === 'light' ? t('settings.themeLight') : t('settings.themeSystem')}
             </Button>
           </Dropdown>
           <Dropdown
@@ -340,7 +342,7 @@ const MainLayout: React.FC = () => {
 
       {/* Connection groups management modal */}
       <Modal
-        title="分组管理"
+        title={t('connectionGroups.title')}
         open={groupsModalOpen}
         onCancel={() => setGroupsModalOpen(false)}
         footer={null}

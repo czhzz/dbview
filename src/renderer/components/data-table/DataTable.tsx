@@ -10,6 +10,7 @@ import {
   SaveOutlined,
   CloseOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { dataApi, databaseApi, sqlApi } from '../../services/api'
 import { useDbType } from '../../hooks/useDbType'
 import { quoteId, quoteTable } from '../../utils/sql-quote'
@@ -36,6 +37,7 @@ interface PendingChange {
 }
 
 const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
+  const { t } = useTranslation()
   const dbType = useDbType(connId)
   const [data, setData] = useState<PaginationResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -78,13 +80,13 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
         orderBy: sortColumn ? { column: sortColumn, direction: sortDirection } : undefined
       })
       setData(result)
-      setStatusText(`表: ${table} | ${result.total} 行 | ${result.executionTime}ms`)
+      setStatusText(t('dataTable.status', { table, total: result.total, time: result.executionTime }))
     } catch (err) {
-      setStatusText(`查询失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      setStatusText(t('dataTable.queryError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     } finally {
       setLoading(false)
     }
-  }, [connId, table, schema, page, pageSize, sortColumn, sortDirection, setStatusText])
+  }, [connId, table, schema, page, pageSize, sortColumn, sortDirection, setStatusText, t])
 
   // Load column metadata for edit mode (primary keys, types)
   const loadColumnMeta = useCallback(async () => {
@@ -217,7 +219,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
 
   const handleDeleteRows = () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('请先选择要删除的行')
+      message.warning(t('dataTable.selectRowsToDelete'))
       return
     }
 
@@ -243,7 +245,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
 
   const handleSaveChanges = async () => {
     if (pendingChanges.size === 0) {
-      message.info('没有待保存的更改')
+      message.info(t('table.noChanges'))
       return
     }
 
@@ -278,7 +280,6 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
 
     try {
       // Wrap all statements in a transaction for atomicity
-      // BEGIN / COMMIT / ROLLBACK work across MySQL, PostgreSQL, SQLite, and Oracle
       await sqlApi.execute(connId, 'BEGIN;')
 
       let executed = 0
@@ -289,18 +290,16 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
         }
         await sqlApi.execute(connId, 'COMMIT;')
       } catch (innerErr) {
-        // Rollback on any failure, then re-throw to show the error message
         await sqlApi.execute(connId, 'ROLLBACK;').catch(() => {})
         throw innerErr
       }
 
-      message.success(`成功执行 ${statements.length} 条语句`)
+      message.success(t('table.saveSuccess', { count: statements.length }))
       exitEditMode()
       loadData()
     } catch (err) {
-      // Reload data to reflect state after the failed transaction (no partial changes)
       loadData()
-      message.error(`保存失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('table.saveFailed', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
   }
 
@@ -320,7 +319,6 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   }, [pendingNav, applySort])
 
   const handleConfirmNavigateAway = () => {
-    // User chose "保存并离开" — save first, then navigate
     handleSaveChanges().then(() => {
       confirmPendingNav()
     })
@@ -466,35 +464,35 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   return (
     <>
       <Modal
-        title="未保存的更改"
+        title={t('dataTable.unsavedChanges')}
         open={!!pendingNav}
         onCancel={handleCancelNavigate}
         footer={[
           <Button key="discard" onClick={handleDiscardAndNavigate}>
-            放弃更改并离开
+            {t('dataTable.discardAndLeave')}
           </Button>,
           <Button key="save" type="primary" onClick={handleConfirmNavigateAway}>
-            保存更改并离开
+            {t('dataTable.saveAndLeave')}
           </Button>,
           <Button key="cancel" onClick={handleCancelNavigate}>
-            取消
+            {t('common.cancel')}
           </Button>
         ]}
         width={400}
       >
         <Typography.Text>
-          您有 {pendingChanges.size} 项未保存的更改。离开当前页面将丢失这些更改。
+          {t('dataTable.unsavedChangesDesc', { count: pendingChanges.size })}
         </Typography.Text>
       </Modal>
     <div className="tab-content" style={{ padding: '0' }}>
       <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} size="small">
-            刷新
+            {t('table.refresh')}
           </Button>
           {!editing ? (
             <Button icon={<EditOutlined />} onClick={enterEditMode} size="small">
-              编辑
+              {t('table.edit')}
             </Button>
           ) : (
             <>
@@ -503,10 +501,10 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
                 onClick={handleAddRow}
                 size="small"
               >
-                添加行
+                {t('table.addRow')}
               </Button>
               <Popconfirm
-                title={`确认删除选中的 ${selectedRowKeys.length} 条记录？`}
+                title={t('table.deleteConfirm', { count: selectedRowKeys.length })}
                 onConfirm={handleDeleteRows}
                 disabled={selectedRowKeys.length === 0}
               >
@@ -516,7 +514,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
                   disabled={selectedRowKeys.length === 0}
                   size="small"
                 >
-                  删除行
+                  {t('table.deleteRow')}
                 </Button>
               </Popconfirm>
               <Button
@@ -526,14 +524,14 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
                 disabled={!hasChanges}
                 size="small"
               >
-                保存更改
+                {t('table.saveChanges')}
               </Button>
               <Button
                 icon={<CloseOutlined />}
                 onClick={handleCancelChanges}
                 size="small"
               >
-                取消编辑
+                {t('table.cancelEdit')}
               </Button>
             </>
           )}
@@ -555,10 +553,10 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
             }}
           />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            共 {data.total} 行 | {data.executionTime}ms
+            {t('table.totalRows', { count: data.total })} | {data.executionTime}ms
             {editing && hasChanges && (
               <Typography.Text type="warning" style={{ marginLeft: 8 }}>
-                ({pendingChanges.size} 项待保存)
+                ({t('table.pendingChanges', { count: pendingChanges.size })})
               </Typography.Text>
             )}
           </Typography.Text>
@@ -587,7 +585,7 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
             total: data.total,
             showSizeChanger: true,
             pageSizeOptions: PAGE_SIZE_OPTIONS,
-            showTotal: (total) => `共 ${total} 行`,
+            showTotal: (total) => t('table.totalRows', { count: total }),
             onChange: (p, ps) => {
               if (editing && pendingChanges.size > 0) {
                 setPendingNav({ page: p, pageSize: ps })

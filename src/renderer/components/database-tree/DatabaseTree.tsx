@@ -267,7 +267,7 @@ const DatabaseTree: React.FC = () => {
             schema: db
           }))
         } catch (err) {
-          message.error(`连接失败: ${err instanceof Error ? err.message : '未知错误'}`)
+          message.error(t('connection.connectError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
           return []
         }
       }
@@ -284,7 +284,7 @@ const DatabaseTree: React.FC = () => {
         // Always show Tables, Views, Queries, Users (Navicat style)
         children.push({
           key: `folder:tables:${connId}:${schema}`,
-          title: `表 (${tables.length})`,
+          title: `${t('database.tables')} (${tables.length})`,
           icon: iconMap.folder,
           isLeaf: false,
           connId,
@@ -293,7 +293,7 @@ const DatabaseTree: React.FC = () => {
         })
         children.push({
           key: `folder:views:${connId}:${schema}`,
-          title: `视图 (${views.length})`,
+          title: `${t('database.views')} (${views.length})`,
           icon: iconMap.folder,
           isLeaf: false,
           connId,
@@ -302,7 +302,7 @@ const DatabaseTree: React.FC = () => {
         })
         children.push({
           key: `folder:queries:${connId}:${schema}`,
-          title: `查询`,
+          title: t('database.queries'),
           icon: iconMap.folder,
           isLeaf: false,
           connId,
@@ -311,7 +311,7 @@ const DatabaseTree: React.FC = () => {
         })
         children.push({
           key: `folder:users:${connId}:${schema}`,
-          title: `用户`,
+          title: t('database.users'),
           icon: iconMap.folder,
           isLeaf: false,
           connId,
@@ -325,7 +325,7 @@ const DatabaseTree: React.FC = () => {
         if (procedures.length > 0) {
           children.push({
             key: `folder:procedures:${connId}:${schema}`,
-            title: `存储过程 (${procedures.length})`,
+            title: `${t('database.procedures')} (${procedures.length})`,
             icon: iconMap.folder,
             isLeaf: false,
             connId,
@@ -336,7 +336,7 @@ const DatabaseTree: React.FC = () => {
         if (functions.length > 0) {
           children.push({
             key: `folder:functions:${connId}:${schema}`,
-            title: `函数 (${functions.length})`,
+            title: `${t('database.functions')} (${functions.length})`,
             icon: iconMap.folder,
             isLeaf: false,
             connId,
@@ -401,7 +401,7 @@ const DatabaseTree: React.FC = () => {
           // Add "View More..." link at bottom
           children.push({
             key: `query-more:${connId}:${schema}`,
-            title: '查看更多...',
+            title: t('queryHistory.viewMore'),
             icon: <HistoryOutlined style={{ color: '#1677ff' }} />,
             isLeaf: true,
             connId,
@@ -481,7 +481,7 @@ const DatabaseTree: React.FC = () => {
 
         children.push({
           key: `folder:columns:${connId}:${schema}:${tableName}`,
-          title: `列 (${columns.length})`,
+          title: `${t('database.columns')} (${columns.length})`,
           icon: iconMap.folder,
           isLeaf: false,
           connId,
@@ -492,7 +492,7 @@ const DatabaseTree: React.FC = () => {
         if (indexes.length > 0) {
           children.push({
             key: `folder:indexes:${connId}:${schema}:${tableName}`,
-            title: `索引 (${indexes.length})`,
+            title: `${t('database.indexes')} (${indexes.length})`,
             icon: iconMap.folder,
             isLeaf: false,
             connId,
@@ -506,7 +506,7 @@ const DatabaseTree: React.FC = () => {
 
       return []
     },
-    [connectedIds, addConnected]
+    [connectedIds, addConnected, t]
   )
 
   // Store latest loadChildren in a ref to avoid effect-dependency cycles
@@ -553,11 +553,11 @@ const DatabaseTree: React.FC = () => {
     setFormLoading(true)
     try {
       const config = await connectionApi.create(values)
-      message.success('连接已创建')
+      message.success(t('connection.createSuccess'))
       setFormOpen(false)
       addConnection(config)
     } catch (err) {
-      message.error(`创建失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.createError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     } finally {
       setFormLoading(false)
     }
@@ -574,12 +574,12 @@ const DatabaseTree: React.FC = () => {
         updatedAt: Date.now()
       }
       await connectionApi.update(updated)
-      message.success('连接已更新')
+      message.success(t('connection.updateSuccess'))
       setFormOpen(false)
       setEditConfig(null)
       updateConnection(updated)
     } catch (err) {
-      message.error(`更新失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.updateError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     } finally {
       setFormLoading(false)
     }
@@ -588,13 +588,13 @@ const DatabaseTree: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await connectionApi.delete(id)
-      message.success('连接已删除')
+      message.success(t('connection.deleteSuccess'))
       removeConnection(id)
       if (connectedIds.has(id)) {
         removeConnected(id)
       }
     } catch (err) {
-      message.error(`删除失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.deleteError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
   }
 
@@ -605,12 +605,12 @@ const DatabaseTree: React.FC = () => {
       const { id: _id, createdAt: _c, updatedAt: _u, ...input } = config
       const cloned = await connectionApi.create({
         ...input,
-        name: `${config.name} (副本)`
+        name: t('connection.copySuffix', { name: config.name })
       })
-      message.success('连接已复制')
+      message.success(t('connection.duplicateSuccess'))
       addConnection(cloned)
     } catch (err) {
-      message.error(`复制失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.duplicateError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
   }
 
@@ -618,9 +618,9 @@ const DatabaseTree: React.FC = () => {
     try {
       await connectionApi.connect(id)
       addConnected(id)
-      message.success('连接成功')
+      message.success(t('connection.connectSuccess'))
     } catch (err) {
-      message.error(`连接失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.connectError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
   }
 
@@ -628,7 +628,7 @@ const DatabaseTree: React.FC = () => {
     try {
       await connectionApi.disconnect(id)
       removeConnected(id)
-      message.success('已断开连接')
+      message.success(t('connection.disconnectSuccess'))
       const connKey = `conn:${id}`
       // Remove children of this connection node and collapse it
       setTreeData((prev) => {
@@ -642,7 +642,7 @@ const DatabaseTree: React.FC = () => {
       // Remove this node and all its descendants from expandedKeys
       setExpandedKeys((prev) => prev.filter((k) => !String(k).startsWith(`conn:${id}:`) && k !== connKey))
     } catch (err) {
-      message.error(`断开失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.disconnectError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
   }
 
@@ -678,20 +678,20 @@ const DatabaseTree: React.FC = () => {
         isConnected
           ? {
               key: 'disconnect',
-              label: '断开连接',
+              label: t('connection.disconnect'),
               icon: <DisconnectOutlined />,
               onClick: () => handleDisconnect(connId)
             }
           : {
               key: 'connect',
-              label: '连接',
+              label: t('connection.connect'),
               icon: <ApiOutlined />,
               onClick: () => handleConnect(connId)
             },
         { type: 'divider' },
         {
           key: 'edit',
-          label: '编辑连接',
+          label: t('connection.edit'),
           icon: <EditOutlined />,
           onClick: () => {
             const conn = connections.find((c) => c.id === connId)
@@ -703,14 +703,14 @@ const DatabaseTree: React.FC = () => {
         },
         {
           key: 'duplicate',
-          label: '复制连接',
+          label: t('connection.duplicate'),
           icon: <CopyOutlined />,
           onClick: () => handleDuplicate(connId)
         },
         { type: 'divider' },
         {
           key: 'delete',
-          label: '删除连接',
+          label: t('connection.delete'),
           icon: <DeleteOutlined />,
           danger: true,
           onClick: () => handleDelete(connId)
@@ -725,7 +725,7 @@ const DatabaseTree: React.FC = () => {
       const items: MenuProps['items'] = [
         {
           key: 'add-connection',
-          label: '新建连接',
+          label: t('connection.create'),
           icon: <PlusOutlined />,
           onClick: () => {
             setEditConfig(null)
@@ -734,7 +734,7 @@ const DatabaseTree: React.FC = () => {
         },
         {
           key: 'delete-group',
-          label: '删除分组',
+          label: t('connectionGroups.deleteGroup'),
           icon: <DeleteOutlined />,
           danger: true,
           onClick: async () => {
@@ -743,9 +743,9 @@ const DatabaseTree: React.FC = () => {
               setGroups((prev) => prev.filter((g) => g.id !== groupId))
               // Reload connections that were in this group (they become ungrouped)
               loadConnections()
-              message.success('分组已删除')
+              message.success(t('connectionGroups.deleteGroupSuccess'))
             } catch (err) {
-              message.error(`删除分组失败: ${err instanceof Error ? err.message : '未知错误'}`)
+              message.error(t('connectionGroups.deleteGroupError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
             }
           }
         }
@@ -760,14 +760,14 @@ const DatabaseTree: React.FC = () => {
       const items: MenuProps['items'] = [
         {
           key: 'new-query',
-          label: '新建查询',
+          label: t('databaseTree.newQuery'),
           icon: <FileTextOutlined />,
           onClick: () => {
             const tab = createNewTab()
             addTab(tab)
             openTab({
               key: `query-${tab.id}`,
-              title: `查询 - ${schema}`,
+              title: t('databaseTree.queryTitle', { name: schema }),
               type: 'query',
               connId,
               schema
@@ -776,7 +776,7 @@ const DatabaseTree: React.FC = () => {
         },
         {
           key: 'refresh',
-          label: '刷新',
+          label: t('table.refresh'),
           onClick: async () => {
             const key = String(node.key)
             // Load children and eagerly pre-load sub-folders so antd doesn't
@@ -792,10 +792,10 @@ const DatabaseTree: React.FC = () => {
         },
         {
           key: 'copy-name',
-          label: '复制数据库名',
+          label: t('databaseTree.copyDbName'),
           onClick: () => {
             navigator.clipboard.writeText(schema)
-            message.success('已复制数据库名')
+            message.success(t('databaseTree.dbNameCopied'))
           }
         }
       ]
@@ -814,7 +814,7 @@ const DatabaseTree: React.FC = () => {
     if (itemType === 'routine') {
       items.push({
         key: 'view-definition',
-        label: '查看定义',
+        label: t('databaseTree.viewDefinition'),
         icon: <CodeOutlined />,
         onClick: async () => {
           try {
@@ -824,10 +824,11 @@ const DatabaseTree: React.FC = () => {
               node.routineType as 'PROCEDURE' | 'FUNCTION',
               schema
             )
-            const header = `-- ${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'}: ${node.routineName}\n`
-            const sql = definition ? header + definition : `${header}-- 无定义或无查看权限`
+            const routineTypeLabel = node.routineType === 'PROCEDURE' ? t('database.procedures') : t('database.functions')
+            const header = `-- ${routineTypeLabel}: ${node.routineName}\n`
+            const sql = definition ? header + definition : `${header}-- ${t('databaseTree.noDefinition')}`
             const tab = createNewTab(sql)
-            tab.title = `${node.routineName} (${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'})`
+            tab.title = `${node.routineName} (${routineTypeLabel})`
             addTab(tab)
             openTab({
               key: `query-${tab.id}`,
@@ -837,7 +838,7 @@ const DatabaseTree: React.FC = () => {
               schema
             })
           } catch (err) {
-            message.error(`获取定义失败: ${err instanceof Error ? err.message : '未知错误'}`)
+            message.error(t('databaseTree.definitionError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
           }
         }
       })
@@ -857,11 +858,12 @@ const DatabaseTree: React.FC = () => {
       }
       items.push({
         key: 'execute-routine',
-        label: '执行',
+        label: t('structure.execute'),
         icon: <PlaySquareOutlined />,
         onClick: () => {
+          const routineTypeLabel = node.routineType === 'PROCEDURE' ? t('database.procedures') : t('database.functions')
           const tab = createNewTab(callSql)
-          tab.title = `${node.routineName} (${node.routineType === 'PROCEDURE' ? '存储过程' : '函数'})`
+          tab.title = `${node.routineName} (${routineTypeLabel})`
           addTab(tab)
           openTab({
             key: `query-${tab.id}`,
@@ -879,7 +881,7 @@ const DatabaseTree: React.FC = () => {
     items.push(
       {
         key: 'view-data',
-        label: '查看数据',
+        label: t('table.data'),
         icon: <TableOutlined />,
         onClick: () =>
           openTab({
@@ -893,12 +895,12 @@ const DatabaseTree: React.FC = () => {
       },
       {
         key: 'view-structure',
-        label: '查看结构',
+        label: t('table.structure'),
         icon: <FieldStringOutlined />,
         onClick: () =>
           openTab({
             key: `struct:${connId}:${schema}:${tableName}`,
-            title: `${tableName} (结构)`,
+            title: t('table.structureTitle', { name: tableName }),
             type: 'structure',
             connId: connId || '',
             table: tableName,
@@ -908,19 +910,19 @@ const DatabaseTree: React.FC = () => {
       { type: 'divider' },
       {
         key: 'copy-name',
-        label: '复制表名',
+        label: t('databaseTree.copyTableName'),
         onClick: () => {
           navigator.clipboard.writeText(tableName || '')
-          message.success('已复制表名')
+          message.success(t('databaseTree.tableNameCopied'))
         }
       },
       {
         key: 'new-query',
-        label: '在新查询中打开',
+        label: t('databaseTree.openInNewQuery'),
         onClick: () => {
           openTab({
             key: `query:${connId}:${Date.now()}`,
-            title: `查询 - ${tableName}`,
+            title: t('databaseTree.queryTitle', { name: tableName }),
             type: 'query',
             connId: connId || '',
             table: tableName
@@ -1006,7 +1008,7 @@ const DatabaseTree: React.FC = () => {
       <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0' }}>
         <Input.Search
           size="small"
-          placeholder={t('databaseTree.searchPlaceholder') || '搜索连接...'}
+          placeholder={t('connection.searchPlaceholder')}
           allowClear
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
@@ -1024,7 +1026,7 @@ const DatabaseTree: React.FC = () => {
             fontSize: 13
           }}
         >
-          {searchText ? '未找到匹配的连接' : (t('databaseTree.noConnections') || '暂无连接，请先添加数据库连接')}
+          {searchText ? t('databaseTree.noSearchResults') : t('databaseTree.noConnections')}
         </div>
       ) : (
         <Tree

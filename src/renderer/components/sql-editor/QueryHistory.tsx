@@ -174,7 +174,7 @@ const QueryHistory: React.FC<Props> = ({ connId, onLoadSql, onClose }) => {
                     <span>{formatTime(entry.executedAt)}</span>
                     <span>{DB_TYPE_LABELS[entry.connType] || entry.connType}</span>
                     <span>{entry.executionTime}ms</span>
-                    <span>{entry.rowCount} 行</span>
+                    <span>{t('sqlEditor.rows', { count: entry.rowCount })}</span>
                     <Popconfirm
                       title={t('queryHistory.deleteConfirm')}
                       onConfirm={(e) => {

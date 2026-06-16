@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Modal, Form, Input, Select, Switch, InputNumber, Typography, Alert, message } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { sqlApi } from '../../services/api'
 import { useDbType } from '../../hooks/useDbType'
 import { quoteId, quoteTable, type DbType } from '../../utils/sql-quote'
@@ -54,6 +55,8 @@ export function useSchemaEditor(
   schema: string | undefined,
   onSuccess: () => void
 ) {
+  const { t } = useTranslation()
+
   const [colDialogOpen, setColDialogOpen] = useState(false)
   const [colDialogMode, setColDialogMode] = useState<'add' | 'edit'>('add')
   const [editingColumn, setEditingColumn] = useState<ColumnInfo | undefined>()
@@ -77,12 +80,12 @@ export function useSchemaEditor(
     const ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} DROP COLUMN ${quoteId(col.name, dbType)};`
     try {
       await sqlApi.execute(connId, ddl)
-      message.success(`已删除列 "${col.name}"`)
+      message.success(t('structure.deleteColumnSuccess', { name: col.name }))
       onSuccess()
     } catch (err) {
-      message.error(`删除列失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('structure.deleteColumnError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
-  }, [connId, table, schema, dbType, onSuccess])
+  }, [connId, table, schema, dbType, onSuccess, t])
 
   const handleDeleteIndex = useCallback(async (idx: IndexInfo) => {
     // MySQL: DROP INDEX `idx` ON `table`;  Others: DROP INDEX "idx"
@@ -91,23 +94,23 @@ export function useSchemaEditor(
       : `DROP INDEX ${quoteId(idx.name, dbType)};`
     try {
       await sqlApi.execute(connId, ddl)
-      message.success(`已删除索引 "${idx.name}"`)
+      message.success(t('structure.deleteIndexSuccess', { name: idx.name }))
       onSuccess()
     } catch (err) {
-      message.error(`删除索引失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('structure.deleteIndexError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     }
-  }, [connId, table, schema, dbType, onSuccess])
+  }, [connId, table, schema, dbType, onSuccess, t])
 
   const executeDdl = useCallback(async (ddl: string) => {
     try {
       await sqlApi.execute(connId, ddl)
-      message.success('DDL 执行成功')
+      message.success(t('structure.executeSuccess'))
       onSuccess()
     } catch (err) {
-      message.error(`DDL 执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('structure.executeFailed', { message: err instanceof Error ? err.message : t('common.unknownError') }))
       throw err
     }
-  }, [connId, onSuccess])
+  }, [connId, onSuccess, t])
 
   return {
     colDialogOpen,
@@ -166,6 +169,7 @@ export const ColumnDialog: React.FC<{
   onClose: () => void
   onConfirm: (ddl: string) => Promise<void>
 }> = ({ open, mode, table, schema, dbType, column, onClose, onConfirm }) => {
+  const { t } = useTranslation()
   const [form] = Form.useForm<ColumnFormValues>()
   const [previewDdl, setPreviewDdl] = useState<string | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
@@ -253,10 +257,10 @@ export const ColumnDialog: React.FC<{
 
   return (
     <Modal
-      title={mode === 'add' ? '添加列' : `修改列 - ${column?.name}`}
+      title={mode === 'add' ? t('structure.addColumn') : t('structure.editColumn') + (column ? ` - ${column.name}` : '')}
       open={open}
       onOk={handleOk}
-      okText={previewDdl ? '执行' : '预览 SQL'}
+      okText={previewDdl ? t('structure.execute') : t('structure.previewSql')}
       onCancel={() => { setPreviewDdl(null); onClose() }}
       confirmLoading={confirmLoading}
       width={520}
@@ -279,37 +283,37 @@ export const ColumnDialog: React.FC<{
               : { nullable: true }
           }
         >
-          <Form.Item name="name" label="列名" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('structure.columnName')} rules={[{ required: true }]}>
             <Input disabled={mode === 'edit'} />
           </Form.Item>
           <div style={{ display: 'flex', gap: 12 }}>
-            <Form.Item name="type" label="类型" rules={[{ required: true }]} style={{ flex: 2 }}>
-              <Select showSearch options={COLUMN_TYPES_BY_DB[dbType]?.map((t) => ({ value: t, label: t })) ?? []} />
+            <Form.Item name="type" label={t('structure.columnType')} rules={[{ required: true }]} style={{ flex: 2 }}>
+              <Select showSearch options={COLUMN_TYPES_BY_DB[dbType]?.map((tp) => ({ value: tp, label: tp })) ?? []} />
             </Form.Item>
-            <Form.Item name="length" label="长度" style={{ flex: 1 }}>
-              <InputNumber min={1} placeholder="可选" style={{ width: '100%' }} />
+            <Form.Item name="length" label={t('structure.columnLength')} style={{ flex: 1 }}>
+              <InputNumber min={1} placeholder={t('structure.optional')} style={{ width: '100%' }} />
             </Form.Item>
           </div>
-          <Form.Item name="nullable" label="允许为空" valuePropName="checked">
+          <Form.Item name="nullable" label={t('structure.nullable')} valuePropName="checked">
             <Switch />
           </Form.Item>
-          <Form.Item name="defaultValue" label="默认值">
-            <Input placeholder="留空表示无默认值" />
+          <Form.Item name="defaultValue" label={t('structure.defaultValue')}>
+            <Input placeholder={t('structure.defaultValuePlaceholder')} />
           </Form.Item>
-          <Form.Item name="comment" label="注释">
+          <Form.Item name="comment" label={t('structure.comment')}>
             <Input />
           </Form.Item>
         </Form>
       ) : (
         <div>
           <Alert
-            message="此操作不可逆，建议先备份"
+            message={t('structure.irreversibleBackup')}
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
           />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            将要执行的 DDL：
+            {t('structure.ddlToExecute')}
           </Typography.Text>
           <pre
             style={{
@@ -346,6 +350,7 @@ export const IndexDialog: React.FC<{
   onClose: () => void
   onConfirm: (ddl: string) => Promise<void>
 }> = ({ open, table, schema, dbType, availableColumns, onClose, onConfirm }) => {
+  const { t } = useTranslation()
   const [form] = Form.useForm<IndexFormValues>()
   const [previewDdl, setPreviewDdl] = useState<string | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
@@ -380,10 +385,10 @@ export const IndexDialog: React.FC<{
 
   return (
     <Modal
-      title="新建索引"
+      title={t('structure.addIndex')}
       open={open}
       onOk={handleOk}
-      okText={previewDdl ? '执行' : '预览 SQL'}
+      okText={previewDdl ? t('structure.execute') : t('structure.previewSql')}
       onCancel={() => { setPreviewDdl(null); onClose() }}
       confirmLoading={confirmLoading}
       width={480}
@@ -395,30 +400,30 @@ export const IndexDialog: React.FC<{
           layout="vertical"
           initialValues={{ unique: false }}
         >
-          <Form.Item name="name" label="索引名" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('structure.indexName')} rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="columns" label="包含字段" rules={[{ required: true }]}>
+          <Form.Item name="columns" label={t('structure.indexColumns')} rules={[{ required: true }]}>
             <Select
               mode="multiple"
               options={availableColumns.map((c) => ({ value: c, label: c }))}
-              placeholder="选择一个或多个字段"
+              placeholder={t('structure.selectColumns')}
             />
           </Form.Item>
-          <Form.Item name="unique" label="唯一索引" valuePropName="checked">
+          <Form.Item name="unique" label={t('structure.uniqueIndex')} valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>
       ) : (
         <div>
           <Alert
-            message="此操作不可逆，建议先备份"
+            message={t('structure.irreversibleBackup')}
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
           />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            将要执行的 DDL：
+            {t('structure.ddlToExecute')}
           </Typography.Text>
           <pre
             style={{

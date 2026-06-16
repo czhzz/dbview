@@ -1,5 +1,6 @@
 import React, { Component, type ReactNode } from 'react'
 import { Result, Button } from 'antd'
+import { useTranslation } from 'react-i18next'
 import MainLayout from './layouts/MainLayout'
 
 interface ErrorBoundaryState {
@@ -7,7 +8,7 @@ interface ErrorBoundaryState {
   error: Error | null
 }
 
-class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+class AppErrorBoundaryInner extends Component<{ children: ReactNode; t: (key: string) => string }, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false, error: null }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -16,14 +17,15 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
 
   render() {
     if (this.state.hasError) {
+      const { t } = this.props
       return (
         <Result
           status="error"
-          title="应用崩溃了"
+          title={t('app.crashed')}
           subTitle={this.state.error?.message}
           extra={
             <Button type="primary" onClick={() => window.location.reload()}>
-              重新加载
+              {t('app.reload')}
             </Button>
           }
         />
@@ -31,6 +33,11 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
     }
     return this.props.children
   }
+}
+
+const AppErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { t } = useTranslation()
+  return <AppErrorBoundaryInner t={t}>{children}</AppErrorBoundaryInner>
 }
 
 const App: React.FC = () => {

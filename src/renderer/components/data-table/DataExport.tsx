@@ -6,6 +6,7 @@ import {
   FileExcelOutlined,
   DatabaseOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { dialogApi, dataApi, fileApi } from '../../services/api'
 import { formatCSV, formatJSON, formatSQLInsert, type ExportData } from '../../utils/export-formatters'
 import type { DbType } from '../../utils/sql-quote'
@@ -28,51 +29,53 @@ interface DataExportProps {
   baseQueryParams?: Omit<PaginationQuery, 'page' | 'pageSize'>
 }
 
-const FORMAT_FILTERS: Record<ExportFormat, { name: string; extensions: string[] }> = {
-  csv: { name: 'CSV 文件', extensions: ['csv'] },
-  json: { name: 'JSON 文件', extensions: ['json'] },
-  sql: { name: 'SQL 文件', extensions: ['sql'] }
-}
-
-const FORMAT_ICONS: Record<ExportFormat, React.ReactNode> = {
-  csv: <FileExcelOutlined />,
-  json: <FileTextOutlined />,
-  sql: <DatabaseOutlined />
-}
-
-function timestamp(): string {
-  const now = new Date()
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-    '_',
-    String(now.getHours()).padStart(2, '0'),
-    String(now.getMinutes()).padStart(2, '0'),
-    String(now.getSeconds()).padStart(2, '0')
-  ].join('')
-}
-
-function formatData(data: ExportData, format: ExportFormat): string {
-  switch (format) {
-    case 'csv':
-      return formatCSV(data)
-    case 'json':
-      return formatJSON(data)
-    case 'sql':
-      return formatSQLInsert(data)
-  }
-}
-
 const DataExport: React.FC<DataExportProps> = ({
   currentData,
   connId,
   tableName,
   schema,
+  dbType,
   baseQueryParams
 }) => {
+  const { t } = useTranslation()
   const [exporting, setExporting] = useState(false)
   const [progress, setProgress] = useState({ percent: 0, visible: false })
+
+  const FORMAT_FILTERS: Record<ExportFormat, { name: string; extensions: string[] }> = {
+    csv: { name: t('dataExport.csvFile'), extensions: ['csv'] },
+    json: { name: t('dataExport.jsonFile'), extensions: ['json'] },
+    sql: { name: t('dataExport.sqlFile'), extensions: ['sql'] }
+  }
+
+  const FORMAT_ICONS: Record<ExportFormat, React.ReactNode> = {
+    csv: <FileExcelOutlined />,
+    json: <FileTextOutlined />,
+    sql: <DatabaseOutlined />
+  }
+
+  function timestamp(): string {
+    const now = new Date()
+    return [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+      '_',
+      String(now.getHours()).padStart(2, '0'),
+      String(now.getMinutes()).padStart(2, '0'),
+      String(now.getSeconds()).padStart(2, '0')
+    ].join('')
+  }
+
+  function formatData(data: ExportData, format: ExportFormat): string {
+    switch (format) {
+      case 'csv':
+        return formatCSV(data)
+      case 'json':
+        return formatJSON(data)
+      case 'sql':
+        return formatSQLInsert(data)
+    }
+  }
 
   /** Write content to a file selected by the user */
   const saveFile = useCallback(
@@ -87,13 +90,13 @@ const DataExport: React.FC<DataExportProps> = ({
       await fileApi.write(result.filePath, content)
       return true
     },
-    [tableName]
+    [tableName, t]
   )
 
   const doExportCurrentPage = useCallback(
     async (format: ExportFormat) => {
       if (currentData.rows.length === 0) {
-        message.warning('没有可导出的数据')
+        message.warning(t('table.noData'))
         return
       }
       try {
@@ -101,15 +104,15 @@ const DataExport: React.FC<DataExportProps> = ({
         const content = formatData(currentData, format)
         const saved = await saveFile(content, format, timestamp())
         if (saved) {
-          message.success(`已导出 ${currentData.rows.length} 行数据`)
+          message.success(t('table.exportSuccess', { count: currentData.rows.length }))
         }
       } catch (err) {
-        message.error(`导出失败: ${err instanceof Error ? err.message : '未知错误'}`)
+        message.error(t('table.exportFailed', { message: err instanceof Error ? err.message : t('common.unknownError') }))
       } finally {
         setExporting(false)
       }
     },
-    [currentData, saveFile]
+    [currentData, saveFile, t]
   )
 
   const doExportAll = useCallback(
@@ -159,16 +162,16 @@ const DataExport: React.FC<DataExportProps> = ({
         const content = formatData(exportData, format)
         const saved = await saveFile(content, format, timestamp())
         if (saved) {
-          message.success(`已导出全部 ${allRows.length} 行数据`)
+          message.success(t('dataExport.exportAllSuccess', { count: allRows.length }))
         }
       } catch (err) {
-        message.error(`导出失败: ${err instanceof Error ? err.message : '未知错误'}`)
+        message.error(t('table.exportFailed', { message: err instanceof Error ? err.message : t('common.unknownError') }))
       } finally {
         setExporting(false)
         setProgress({ percent: 0, visible: false })
       }
     },
-    [connId, tableName, schema, baseQueryParams, currentData.columns, saveFile]
+    [connId, tableName, schema, baseQueryParams, currentData.columns, saveFile, t]
   )
 
   const makeMenuItems = (scope: 'current' | 'all') => {
@@ -202,12 +205,12 @@ const DataExport: React.FC<DataExportProps> = ({
           items: [
             {
               key: 'current',
-              label: '导出当前页',
+              label: t('table.exportCurrentPage'),
               children: makeMenuItems('current')
             },
             {
               key: 'all',
-              label: '导出全部',
+              label: t('table.exportAll'),
               children: makeMenuItems('all')
             }
           ]
@@ -220,11 +223,11 @@ const DataExport: React.FC<DataExportProps> = ({
           loading={exporting}
           disabled={currentData.rows.length === 0}
         >
-          导出
+          {t('table.export')}
         </Button>
       </Dropdown>
       <Modal
-        title="正在导出"
+        title={t('table.exporting')}
         open={progress.visible}
         footer={null}
         closable={false}
@@ -233,7 +236,7 @@ const DataExport: React.FC<DataExportProps> = ({
       >
         <Progress percent={progress.percent} status="active" />
         <p style={{ textAlign: 'center', marginTop: 8, color: '#999' }}>
-          正在拉取数据，请稍候...
+          {t('table.exportingProgress')}
         </p>
       </Modal>
     </>

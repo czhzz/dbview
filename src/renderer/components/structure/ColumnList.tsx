@@ -1,6 +1,7 @@
 import React from 'react'
 import { Table, Tag, Button, Space, Popconfirm } from 'antd'
 import { KeyOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import type { ColumnInfo } from '../../types/database'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDelete }) => {
+  const { t } = useTranslation()
   const dataSource = columns.map((col, i) => ({ ...col, _key: i }))
 
   return (
@@ -24,7 +26,7 @@ const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDel
       scroll={{ y: 300 }}
     >
       <Table.Column
-        title="字段名"
+        title={t('structure.columnName')}
         dataIndex="name"
         key="name"
         width={180}
@@ -37,9 +39,9 @@ const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDel
           </span>
         )}
       />
-      <Table.Column title="类型" dataIndex="type" key="type" width={180} />
+      <Table.Column title={t('structure.columnType')} dataIndex="type" key="type" width={180} />
       <Table.Column
-        title="可空"
+        title={t('structure.nullable')}
         dataIndex="nullable"
         key="nullable"
         width={60}
@@ -48,17 +50,17 @@ const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDel
         }
       />
       <Table.Column
-        title="默认值"
+        title={t('structure.defaultValue')}
         dataIndex="defaultValue"
         key="defaultValue"
         width={120}
         render={(v: string | null) => v ?? <span style={{ color: '#999' }}>NULL</span>}
       />
-      <Table.Column title="额外" dataIndex="extra" key="extra" width={120} />
-      <Table.Column title="注释" dataIndex="comment" key="comment" ellipsis />
+      <Table.Column title={t('structure.extra')} dataIndex="extra" key="extra" width={120} />
+      <Table.Column title={t('structure.comment')} dataIndex="comment" key="comment" ellipsis />
       {editable && (
         <Table.Column
-          title="操作"
+          title={t('structure.actions')}
           key="actions"
           width={120}
           render={(_: unknown, record: ColumnInfo) => (
@@ -69,14 +71,14 @@ const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDel
                 icon={<EditOutlined />}
                 onClick={() => onEdit?.(record)}
               >
-                编辑
+                {t('structure.edit')}
               </Button>
               <Popconfirm
-                title={`确认删除列 "${record.name}"？`}
-                description="此操作不可逆"
+                title={t('structure.deleteColumnConfirm', { name: record.name })}
+                description={t('structure.irreversible')}
                 onConfirm={() => onDelete?.(record)}
-                okText="删除"
-                cancelText="取消"
+                okText={t('common.delete')}
+                cancelText={t('common.cancel')}
                 okButtonProps={{ danger: true }}
               >
                 <Button
@@ -85,7 +87,7 @@ const ColumnList: React.FC<Props> = ({ columns, loading, editable, onEdit, onDel
                   danger
                   icon={<DeleteOutlined />}
                 >
-                  删除
+                  {t('structure.deleteColumn')}
                 </Button>
               </Popconfirm>
             </Space>

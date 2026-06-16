@@ -3,6 +3,7 @@ import { Skeleton } from 'antd'
 import { EditorView, basicSetup } from 'codemirror'
 import { sql, MySQL } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { useTranslation } from 'react-i18next'
 import { getCMDialect } from '../sql-editor/SqlEditor'
 import type { DbType } from '../../utils/sql-quote'
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 const DDLViewer: React.FC<Props> = ({ ddl, dbType, loading }) => {
+  const { t } = useTranslation()
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +44,7 @@ const DDLViewer: React.FC<Props> = ({ ddl, dbType, loading }) => {
         parent: editorRef.current
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '渲染DDL失败')
+      setError(err instanceof Error ? err.message : t('structure.ddlRenderError'))
     }
 
     return () => {
@@ -51,7 +53,7 @@ const DDLViewer: React.FC<Props> = ({ ddl, dbType, loading }) => {
         viewRef.current = null
       }
     }
-  }, [ddl, dbType, loading])
+  }, [ddl, dbType, loading, t])
 
   if (loading) {
     return <Skeleton active style={{ padding: 16 }} />
@@ -68,7 +70,7 @@ const DDLViewer: React.FC<Props> = ({ ddl, dbType, loading }) => {
   if (!ddl) {
     return (
       <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
-        无 DDL 信息
+        {t('structure.noDdl')}
       </div>
     )
   }

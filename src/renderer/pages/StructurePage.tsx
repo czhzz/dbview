@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Tabs, Typography, Space, Button } from 'antd'
 import { TableOutlined, EditOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { databaseApi } from '../services/api'
 import { useDbType } from '../hooks/useDbType'
 import ColumnList from '../components/structure/ColumnList'
@@ -16,6 +17,7 @@ interface Props {
 }
 
 const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
+  const { t } = useTranslation()
   const dbType = useDbType(connId)
   const [columns, setColumns] = useState<ColumnInfo[]>([])
   const [indexes, setIndexes] = useState<IndexInfo[]>([])
@@ -53,18 +55,18 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
         <Space>
           <TableOutlined />
           <Typography.Text strong>{schema ? `${schema}.` : ''}{table}</Typography.Text>
-          <Typography.Text type="secondary">表结构</Typography.Text>
+          <Typography.Text type="secondary">{t('structure.title')}</Typography.Text>
           {!editing ? (
             <Button
               icon={<EditOutlined />}
               size="small"
               onClick={() => setEditing(true)}
             >
-              编辑
+              {t('structure.edit')}
             </Button>
           ) : (
             <Button size="small" onClick={() => setEditing(false)}>
-              退出编辑
+              {t('structure.exitEdit')}
             </Button>
           )}
         </Space>
@@ -76,7 +78,7 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
           items={[
             {
               key: 'columns',
-              label: `字段 (${columns.length})`,
+              label: t('structure.columnsTab', { count: columns.length }),
               children: (
                 <div>
                   {editing && (
@@ -85,7 +87,7 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
                         size="small"
                         onClick={editor.handleAddColumn}
                       >
-                        + 添加列
+                        {t('structure.addColumn')}
                       </Button>
                     </div>
                   )}
@@ -101,7 +103,7 @@ const StructurePage: React.FC<Props> = ({ connId, table, schema }) => {
             },
             {
               key: 'indexes',
-              label: `索引 (${indexes.length})`,
+              label: t('structure.indexesTab', { count: indexes.length }),
               children: (
                 <IndexList
                   indexes={indexes}

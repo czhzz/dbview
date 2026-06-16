@@ -12,6 +12,7 @@ import { sql, MySQL, PostgreSQL } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { keymap } from '@codemirror/view'
 import { format as sqlFormat, type SqlLanguage } from 'sql-formatter'
+import { useTranslation } from 'react-i18next'
 import { sqlApi, historyApi } from '../../services/api'
 import { useUIStore } from '../../stores/uiStore'
 import { useConnectionStore } from '../../stores/connectionStore'
@@ -59,6 +60,7 @@ const DB_TYPE_LABELS: Record<string, string> = {
 }
 
 const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
+  const { t } = useTranslation()
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const [results, setResults] = useState<SQLResult[]>([])
@@ -107,9 +109,9 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
         }
       })
     } catch {
-      message.warning('SQL 格式化失败，请检查语法')
+      message.warning(t('sqlEditor.formatFailed'))
     }
-  }, [dbType])
+  }, [dbType, t])
 
   // -- CodeMirror init ------------------------------------------------------
 
@@ -181,7 +183,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
   const handleExecute = useCallback(async (sqlText?: string) => {
     const sqlToRun = sqlText || getCurrentSql()
     if (!sqlToRun.trim()) {
-      message.warning('请输入 SQL 语句')
+      message.warning(t('sqlEditor.enterSql'))
       return
     }
 
@@ -195,7 +197,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
       setActiveResultTab('results')
       setStatusText(
         result.message ||
-          `查询完成 | ${result.rows.length} 行 | ${result.executionTime}ms`
+          t('sqlEditor.executeSuccess', { rows: result.rows.length, time: result.executionTime })
       )
 
       // Save to query history
@@ -212,25 +214,26 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
       }
     } catch (err) {
       if (err instanceof Error && err.message === '查询已取消') {
-        setStatusText('查询已取消')
+        setStatusText(t('sqlEditor.cancelled'))
       } else {
-        message.error(`执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
-        setStatusText(`执行失败: ${err instanceof Error ? err.message : '未知错误'}`)
+        const errMsg = err instanceof Error ? err.message : t('common.unknownError')
+        message.error(t('sqlEditor.executeFailed', { message: errMsg }))
+        setStatusText(t('sqlEditor.executeFailed', { message: errMsg }))
       }
     } finally {
       setRunning(false)
       setActiveQueryId(null)
     }
-  }, [connId, dbType, getCurrentSql, setStatusText])
+  }, [connId, dbType, getCurrentSql, setStatusText, t])
 
   const handleCancel = useCallback(async () => {
     if (activeQueryId) {
       await sqlApi.cancel(connId, activeQueryId)
       setActiveQueryId(null)
       setRunning(false)
-      setStatusText('查询已取消')
+      setStatusText(t('sqlEditor.cancelled'))
     }
-  }, [connId, activeQueryId, setStatusText])
+  }, [connId, activeQueryId, setStatusText, t])
 
   const clearResults = () => {
     setResults([])
@@ -299,7 +302,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
                   tableName="query_result"
                 />
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {result.rows.length} 行 | {result.executionTime}ms
+                  {t('sqlEditor.rows', { count: result.rows.length })} | {result.executionTime}ms
                 </Typography.Text>
               </Space>
             </div>
@@ -314,7 +317,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
                 pagination={{
                   showSizeChanger: true,
                   pageSizeOptions: [50, 100, 200],
-                  showTotal: (total) => `共 ${total} 行`,
+                  showTotal: (total) => t('table.totalRows', { count: total }),
                   defaultPageSize: 100
                 }}
                 sticky
@@ -323,7 +326,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
           </>
         ) : (
           <div style={{ padding: 16, color: '#999' }}>
-            {result.message || `影响行数: ${result.affectedRows}`}
+            {result.message || t('sqlEditor.affectedRows', { count: result.affectedRows })}
           </div>
         )}
       </div>
@@ -351,7 +354,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
             loading={running}
             size="small"
           >
-            执行 (Ctrl+Enter)
+            {t('sqlEditor.execute')}
           </Button>
           {running && (
             <Button
@@ -360,23 +363,23 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
               onClick={handleCancel}
               size="small"
             >
-              取消
+              {t('sqlEditor.cancel')}
             </Button>
           )}
           <Button
             icon={<FormatPainterOutlined />}
             onClick={handleFormat}
             size="small"
-            title="格式化 SQL (Ctrl+S)"
+            title={t('sqlEditor.formatTooltip')}
           >
-            格式化
+            {t('sqlEditor.format')}
           </Button>
           <Button
             icon={<HistoryOutlined />}
             onClick={() => setHistoryVisible((v) => !v)}
             size="small"
           >
-            历史
+            {t('sqlEditor.history')}
           </Button>
           <Button
             icon={<DeleteOutlined />}
@@ -384,7 +387,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
             disabled={results.length === 0}
             size="small"
           >
-            清除结果
+            {t('sqlEditor.clearResults')}
           </Button>
         </Space>
         <Typography.Text
@@ -447,7 +450,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
             items={[
               {
                 key: 'results',
-                label: `结果 (${results.length})`,
+                label: t('sqlEditor.results', { count: results.length }),
                 children: (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {results.length > 0 ? (
@@ -460,7 +463,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
                           color: '#999'
                         }}
                       >
-                        执行 SQL 查看结果
+                        {t('sqlEditor.executeSql')}
                       </div>
                     )}
                   </div>
@@ -468,7 +471,7 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
               },
               {
                 key: 'session-history',
-                label: '本次记录',
+                label: t('sqlEditor.sessionHistory'),
                 children: (
                   <div style={{ padding: 12, maxHeight: 300, overflow: 'auto' }}>
                     {results.map((r, i) => (
@@ -485,11 +488,11 @@ const SqlEditor: React.FC<Props> = ({ connId, initialSql, tabId }) => {
                         <Typography.Text code>
                           [{r.executionTime}ms]
                         </Typography.Text>{' '}
-                        {r.message || `${r.rows.length} 行`}
+                        {r.message || t('sqlEditor.rows', { count: r.rows.length })}
                       </div>
                     ))}
                     {results.length === 0 && (
-                      <Typography.Text type="secondary">暂无执行记录</Typography.Text>
+                      <Typography.Text type="secondary">{t('sqlEditor.noRecords')}</Typography.Text>
                     )}
                   </div>
                 )

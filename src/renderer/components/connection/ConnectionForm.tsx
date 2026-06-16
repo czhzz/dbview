@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Modal, Form, Input, InputNumber, Select, Switch, Button } from 'antd'
 import { DatabaseOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { connectionApi } from '../../services/api'
 import ConnectionTestBtn from './ConnectionTestBtn'
 import type { ConnectionConfig, ConnectionConfigInput, ConnectionGroup } from '../../types/connection'
@@ -21,6 +22,7 @@ const DB_TYPES = [
 ]
 
 const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loading }) => {
+  const { t } = useTranslation()
   const [form] = Form.useForm<ConnectionConfigInput>()
   const dbType = Form.useWatch('type', form)
   const [groups, setGroups] = useState<ConnectionGroup[]>([])
@@ -69,7 +71,7 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
       title={
         <span>
           <DatabaseOutlined style={{ marginRight: 8 }} />
-          {editConfig ? '编辑连接' : '新建连接'}
+          {editConfig ? t('connection.edit') : t('connection.create')}
         </span>
       }
       open={open}
@@ -81,10 +83,10 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
       footer={[
         <ConnectionTestBtn key="test" getValues={getValues} />,
         <Button key="cancel" onClick={onCancel}>
-          取消
+          {t('common.cancel')}
         </Button>,
         <Button key="ok" type="primary" loading={loading} onClick={handleOk}>
-          确定
+          {t('common.confirm')}
         </Button>
       ]}
     >
@@ -96,23 +98,23 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
       >
         <Form.Item
           name="name"
-          label="连接名称"
-          rules={[{ required: true, message: '请输入连接名称' }]}
+          label={t('connection.name')}
+          rules={[{ required: true, message: t('connection.nameRequired') }]}
         >
-          <Input placeholder="例如：本地开发库" />
+          <Input placeholder={t('connection.namePlaceholder')} />
         </Form.Item>
 
-        <Form.Item name="groupId" label="分组">
+        <Form.Item name="groupId" label={t('connection.group')}>
           <Select
             allowClear
-            placeholder="无分组"
+            placeholder={t('connection.noGroup')}
             options={groups.map((g) => ({ value: g.id, label: g.name }))}
           />
         </Form.Item>
 
         <Form.Item
           name="type"
-          label="数据库类型"
+          label={t('connection.type')}
           rules={[{ required: true }]}
         >
           <Select options={DB_TYPES} onChange={() => {
@@ -126,12 +128,12 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           <>
             <Form.Item
               name="host"
-              label="文件路径"
-              rules={[{ required: true, message: '请选择或输入 SQLite 文件路径' }]}
+              label={t('connection.sqliteFile')}
+              rules={[{ required: true, message: t('connection.sqliteFileRequired') }]}
             >
               <Input placeholder="/path/to/database.db" />
             </Form.Item>
-            <Form.Item name="readOnly" label="只读模式" valuePropName="checked">
+            <Form.Item name="readOnly" label={t('connection.readOnly')} valuePropName="checked">
               <Switch />
             </Form.Item>
           </>
@@ -140,8 +142,8 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
             <div style={{ display: 'flex', gap: 12 }}>
               <Form.Item
                 name="host"
-                label="主机地址"
-                rules={[{ required: true, message: '请输入主机地址' }]}
+                label={t('connection.host')}
+                rules={[{ required: true, message: t('connection.hostRequired') }]}
                 style={{ flex: 1 }}
               >
                 <Input placeholder="127.0.0.1" />
@@ -149,7 +151,7 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
 
               <Form.Item
                 name="port"
-                label="端口"
+                label={t('connection.port')}
                 rules={[{ required: true }]}
                 style={{ width: 120 }}
               >
@@ -159,25 +161,25 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
 
             <Form.Item
               name="username"
-              label="用户名"
-              rules={[{ required: true, message: '请输入用户名' }]}
+              label={t('connection.username')}
+              rules={[{ required: true, message: t('connection.usernameRequired') }]}
             >
               <Input placeholder="root" />
             </Form.Item>
 
             <Form.Item
               name="password"
-              label="密码"
-              rules={[{ required: !editConfig, message: '请输入密码' }]}
+              label={t('connection.password')}
+              rules={[{ required: !editConfig, message: t('connection.passwordRequired') }]}
             >
-              <Input.Password placeholder={editConfig ? '留空则不修改密码' : ''} />
+              <Input.Password placeholder={editConfig ? t('connection.passwordPlaceholder') : ''} />
             </Form.Item>
 
             {dbType === 'oracle' && (
               <Form.Item
                 name="oracleServiceName"
-                label="服务名 / SID"
-                tooltip="Oracle 连接服务名（如 xe、orcl）"
+                label={t('connection.oracleServiceName')}
+                tooltip={t('connection.oracleServiceNameTooltip')}
               >
                 <Input placeholder="xe" />
               </Form.Item>
@@ -185,10 +187,10 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
 
             <Form.Item
               name="database"
-              label={dbType === 'postgresql' ? '默认数据库' : '默认数据库'}
-              tooltip="可选，连接后默认选中的数据库"
+              label={t('connection.database')}
+              tooltip={t('connection.databaseTooltip')}
             >
-              <Input placeholder={dbType === 'postgresql' ? 'postgres' : '留空则连接后选择'} />
+              <Input placeholder={dbType === 'postgresql' ? 'postgres' : t('connection.databasePlaceholder')} />
             </Form.Item>
           </>
         )}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Button, message } from 'antd'
 import { ApiOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { connectionApi } from '../../services/api'
 import type { ConnectionConfigInput } from '../../types/connection'
 
@@ -9,6 +10,7 @@ interface Props {
 }
 
 const ConnectionTestBtn: React.FC<Props> = ({ getValues }) => {
+  const { t } = useTranslation()
   const [testing, setTesting] = useState(false)
 
   const handleTest = async () => {
@@ -17,12 +19,14 @@ const ConnectionTestBtn: React.FC<Props> = ({ getValues }) => {
       const values = getValues()
       const result = await connectionApi.test(values)
       if (result.success) {
-        message.success(`连接成功！${result.serverVersion ? `版本: ${result.serverVersion}` : ''}`)
+        message.success(result.serverVersion
+          ? t('connection.testSuccessWithVersion', { version: result.serverVersion })
+          : t('connection.testSuccess'))
       } else {
-        message.error(`连接失败: ${result.message}`)
+        message.error(t('connection.testFailedWithMsg', { message: result.message }))
       }
     } catch (err: unknown) {
-      message.error(`测试异常: ${err instanceof Error ? err.message : '未知错误'}`)
+      message.error(t('connection.testError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
     } finally {
       setTesting(false)
     }
@@ -30,7 +34,7 @@ const ConnectionTestBtn: React.FC<Props> = ({ getValues }) => {
 
   return (
     <Button icon={<ApiOutlined />} onClick={handleTest} loading={testing}>
-      测试连接
+      {t('connection.test')}
     </Button>
   )
 }
