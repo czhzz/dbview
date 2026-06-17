@@ -13,7 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { dataApi, databaseApi, sqlApi } from '../../services/api'
 import { useDbType } from '../../hooks/useDbType'
-import { quoteId, quoteTable } from '../../utils/sql-quote'
+import { generateDMLBatch, type PendingChange } from '../../utils/dml-generator'
 import { useUIStore } from '../../stores/uiStore'
 import DataExport from './DataExport'
 import type { PaginationResult, ColumnInfo } from '../../types/database'
@@ -25,16 +25,6 @@ interface Props {
 }
 
 const PAGE_SIZE_OPTIONS = [50, 100, 200, 500]
-
-/** Change types tracked for pending edits */
-type ChangeType = 'update' | 'insert' | 'delete'
-
-interface PendingChange {
-  type: ChangeType
-  rowIndex: number
-  originalRow?: Record<string, unknown>
-  modifiedValues?: Record<string, unknown>
-}
 
 const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   const { t } = useTranslation()
@@ -249,34 +239,13 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
       return
     }
 
-    const statements: string[] = []
-
-    for (const [, change] of pendingChanges) {
-      switch (change.type) {
-        case 'update': {
-          if (!change.modifiedValues || !change.originalRow) break
-          const setClauses = Object.entries(change.modifiedValues)
-            .map(([col, val]) => `${quoteId(col, dbType)} = ${formatSqlValue(val)}`)
-            .join(', ')
-          const whereClause = buildWhereClause(change.originalRow)
-          statements.push(`UPDATE ${quoteTable(table, schema, dbType)} SET ${setClauses} WHERE ${whereClause};`)
-          break
-        }
-        case 'insert': {
-          if (!change.modifiedValues) break
-          const cols = Object.keys(change.modifiedValues)
-          const vals = Object.values(change.modifiedValues).map(formatSqlValue)
-          statements.push(`INSERT INTO ${quoteTable(table, schema, dbType)} (${cols.map((c) => quoteId(c, dbType)).join(', ')}) VALUES (${vals.join(', ')});`)
-          break
-        }
-        case 'delete': {
-          if (!change.originalRow) break
-          const whereClause = buildWhereClause(change.originalRow)
-          statements.push(`DELETE FROM ${quoteTable(table, schema, dbType)} WHERE ${whereClause};`)
-          break
-        }
-      }
-    }
+    const statements = generateDMLBatch(
+      Array.from(pendingChanges.values()),
+      table,
+      schema,
+      dbType,
+      pkColumns
+    )
 
     try {
       // Wrap all statements in a transaction for atomicity
@@ -349,22 +318,6 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
     // New row
     const newRowIndex = index - existingRows.length
     return newRows[newRowIndex] || {}
-  }
-
-  const buildWhereClause = (row: Record<string, unknown>): string => {
-    // Use primary key columns if available; otherwise use all columns
-    const keyCols = pkColumns.length > 0 ? pkColumns : Object.keys(row)
-    return keyCols
-      .map((col) => `${quoteId(col, dbType)} = ${formatSqlValue(row[col])}`)
-      .join(' AND ')
-  }
-
-  const formatSqlValue = (value: unknown): string => {
-    if (value === null || value === undefined) return 'NULL'
-    if (typeof value === 'number') return String(value)
-    if (typeof value === 'boolean') return value ? '1' : '0'
-    const str = String(value)
-    return "'" + str.replace(/'/g, "''") + "'"
   }
 
   // -- Column definitions --

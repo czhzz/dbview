@@ -1,0 +1,78 @@
+appId: com.dbview.app
+productName: DBView
+copyright: Copyright © 2026 CAOZH
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+# Files included in the app bundle. out/ is the electron-vite build output.
+# node_modules native deps (better-sqlite3, mysql2, oracledb, pg) are included
+# automatically; they must NOT be inside asar so the runtime can load them.
+files:
+  - out/**/*
+  - package.json
+  - '!**/.vscode/*'
+  - '!**/*.{map,ts}'
+  - '!**/.eslintrc*'
+
+asar: true
+# Native modules must be unpacked from asar so Node can require() them.
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**'
+  - '**/node_modules/mysql2/**'
+  - '**/node_modules/oracledb/**'
+  - '**/node_modules/pg/**'
+  - '**/node_modules/sql.js/**'
+
+# Extra resources: sql.js WASM binary ships separately.
+extraResources:
+  - from: node_modules/sql.js/dist/sql-wasm.wasm
+    to: sql-wasm.wasm
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DBView
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: build/icon.icns
+  category: public.app-category.developer-tools
+
+dmg:
+  title: ${productName} ${version}
+  contents:
+    - x: 130
+      'y': 220
+    - x: 410
+      'y': 220
+      type: link
+      path: /Applications
+
+# Linux fallback (optional, not a primary target)
+linux:
+  target:
+    - AppImage
+  icon: build/icon.png
+  category: Development
+
+publish:
+  provider: github
+  owner: CAOZH
+  repo: dbview

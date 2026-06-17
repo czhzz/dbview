@@ -4,6 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { sqlApi } from '../../services/api'
 import { useDbType } from '../../hooks/useDbType'
 import { quoteId, quoteTable, type DbType } from '../../utils/sql-quote'
+import {
+  generateColumnDDL,
+  generateIndexDDL,
+  type ColumnFormValues,
+  type IndexFormValues
+} from '../../utils/ddl-generator'
 import type { ColumnInfo, IndexInfo } from '../../types/database'
 
 // Common SQL column types — per database engine
@@ -130,35 +136,6 @@ export function useSchemaEditor(
 
 // ---- Column Dialog ----
 
-interface ColumnFormValues {
-  name: string
-  type: string
-  length?: number
-  nullable: boolean
-  defaultValue?: string
-  comment?: string
-}
-
-/**
- * Build a COMMENT ON COLUMN statement for PostgreSQL / Oracle.
- * MySQL uses inline COMMENT syntax in column definition (handled separately).
- * SQLite does not support column comments.
- */
-function buildCommentSql(
-  table: string,
-  schema: string | undefined,
-  column: string,
-  comment: string,
-  dbType: DbType
-): string {
-  const escaped = comment.replace(/'/g, "''")
-  if (dbType === 'oracle') {
-    return `COMMENT ON COLUMN "${schema || ''}"."${table}"."${column}" IS '${escaped}'`
-  }
-  // PostgreSQL
-  return `COMMENT ON COLUMN ${quoteTable(table, schema, dbType)}.${quoteId(column, dbType)} IS '${escaped}'`
-}
-
 export const ColumnDialog: React.FC<{
   open: boolean
   mode: 'add' | 'edit'
@@ -173,65 +150,6 @@ export const ColumnDialog: React.FC<{
   const [form] = Form.useForm<ColumnFormValues>()
   const [previewDdl, setPreviewDdl] = useState<string | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
-
-  const generateDDL = (values: ColumnFormValues): string => {
-    const typeStr = values.length
-      ? `${values.type}(${values.length})`
-      : values.type
-    const nullable = values.nullable ? '' : ' NOT NULL'
-    const defaultVal = values.defaultValue !== undefined && values.defaultValue !== ''
-      ? ` DEFAULT ${values.defaultValue}`
-      : ''
-
-    if (mode === 'add') {
-      let ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}`
-      // MySQL supports inline COMMENT in column definition
-      if (values.comment && dbType === 'mysql') {
-        ddl += ` COMMENT '${values.comment.replace(/'/g, "''")}'`
-      }
-      ddl += ';'
-      // PostgreSQL / Oracle: use COMMENT ON COLUMN (separate statement)
-      if (values.comment && (dbType === 'postgresql' || dbType === 'oracle')) {
-        ddl += `\n${buildCommentSql(table, schema, values.name, values.comment, dbType)};`
-      }
-      // SQLite: no column comment support, silently skip
-      return ddl
-    }
-
-    // MODIFY COLUMN is MySQL-specific syntax
-    if (dbType === 'mysql') {
-      let ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} MODIFY COLUMN ${quoteId(values.name, dbType)} ${typeStr}${nullable}${defaultVal}`
-      if (values.comment) {
-        ddl += ` COMMENT '${values.comment.replace(/'/g, "''")}'`
-      }
-      ddl += ';'
-      return ddl
-    }
-
-    // PostgreSQL: ALTER COLUMN ... SET DATA TYPE / SET DEFAULT / SET NOT NULL
-    if (dbType === 'postgresql') {
-      let pgDdl = `ALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET DATA TYPE ${typeStr};`
-      if (!values.nullable) {
-        pgDdl += `\nALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET NOT NULL;`
-      }
-      if (defaultVal) {
-        pgDdl += `\nALTER TABLE ${quoteTable(table, schema, dbType)} ALTER COLUMN ${quoteId(values.name, dbType)} SET DEFAULT ${defaultVal};`
-      }
-      if (values.comment) {
-        pgDdl += `\n${buildCommentSql(table, schema, values.name, values.comment, dbType)};`
-      }
-      return pgDdl
-    }
-
-    // SQLite / Oracle: ADD COLUMN cannot add NOT NULL column (table must be empty)
-    let ddl = `ALTER TABLE ${quoteTable(table, schema, dbType)} ADD COLUMN ${quoteId(values.name, dbType)} ${typeStr}${defaultVal};`
-    // Oracle supports COMMENT ON COLUMN
-    if (values.comment && dbType === 'oracle') {
-      ddl += `\n${buildCommentSql(table, schema, values.name, values.comment, dbType)};`
-    }
-    // SQLite: no column comment support, silently skip
-    return ddl
-  }
 
   const handleOk = async () => {
     if (previewDdl) {
@@ -248,7 +166,7 @@ export const ColumnDialog: React.FC<{
 
     try {
       const values = await form.validateFields()
-      const ddl = generateDDL(values)
+      const ddl = generateColumnDDL(values, mode, table, schema, dbType)
       setPreviewDdl(ddl)
     } catch {
       // validation error
@@ -335,12 +253,6 @@ export const ColumnDialog: React.FC<{
 
 // ---- Index Dialog ----
 
-interface IndexFormValues {
-  name: string
-  columns: string[]
-  unique: boolean
-}
-
 export const IndexDialog: React.FC<{
   open: boolean
   table: string
@@ -354,12 +266,6 @@ export const IndexDialog: React.FC<{
   const [form] = Form.useForm<IndexFormValues>()
   const [previewDdl, setPreviewDdl] = useState<string | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
-
-  const generateDDL = (values: IndexFormValues): string => {
-    const unique = values.unique ? 'UNIQUE ' : ''
-    const colList = values.columns.map((c) => quoteId(c, dbType)).join(', ')
-    return `CREATE ${unique}INDEX ${quoteId(values.name, dbType)} ON ${quoteTable(table, schema, dbType)} (${colList});`
-  }
 
   const handleOk = async () => {
     if (previewDdl) {
@@ -376,7 +282,7 @@ export const IndexDialog: React.FC<{
 
     try {
       const values = await form.validateFields()
-      const ddl = generateDDL(values)
+      const ddl = generateIndexDDL(values, table, schema, dbType)
       setPreviewDdl(ddl)
     } catch {
       // validation error

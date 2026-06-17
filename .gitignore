@@ -1,7 +1,11 @@
 node_modules/
 out/
 dist/
+release/
 .vite/
 *.local
 .claude/settings.local.json
 .DS_Store
+
+# Test coverage
+coverage/

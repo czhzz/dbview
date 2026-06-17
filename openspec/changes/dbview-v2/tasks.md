@@ -78,18 +78,18 @@
 ## 第4周：P2 工程基建（24h）
 
 ### P2-11 test-coverage（16h）
-- [ ] 安装 vitest，配置 `vitest.config.ts`
-- [ ] DDL 生成测试：SchemaEditor.generateDDL 四种数据库覆盖
-- [ ] DML 生成测试：DataTable 的 UPDATE/INSERT/DELETE 语句生成
-- [ ] 导出格式化测试：CSV/JSON/SQL 格式化
-- [ ] SQL 引用测试：quoteId / quoteTable 四种数据库
-- [ ] CI 集成：在 GitHub Actions 中运行测试
+- [x] 安装 vitest，配置 `vitest.config.ts`
+- [x] DDL 生成测试：SchemaEditor.generateDDL 四种数据库覆盖
+- [x] DML 生成测试：DataTable 的 UPDATE/INSERT/DELETE 语句生成
+- [x] 导出格式化测试：CSV/JSON/SQL 格式化
+- [x] SQL 引用测试：quoteId / quoteTable 四种数据库
+- [x] CI 集成：在 GitHub Actions 中运行测试
 
 ### P2-2 build-package（8h）
-- [ ] 配置 `electron-builder.yml`（Windows NSIS + macOS dmg）
-- [ ] 配置应用图标和应用元数据
-- [ ] 验证 `pnpm build && electron-builder` 生成安装包
-- [ ] 配置 `electron-updater` 自动更新（可选）
+- [x] 配置 `electron-builder.yml`（Windows NSIS + macOS dmg）
+- [x] 配置应用图标和应用元数据
+- [ ] 验证 `pnpm build && electron-builder` 生成安装包（待图标资源就绪 + Electron 二进制环境）
+- [x] 配置 `electron-updater` 自动更新（publish: github 已配置，可选）
 
 ---
 
