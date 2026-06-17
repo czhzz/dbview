@@ -16,6 +16,7 @@ export async function registerAllIpc(): Promise<void> {
   await store.init()
 
   const logService = new SqlLogService()
+  await logService.init()
   logService.registerIpc()
 
   manager = new ConnectionManager(store, logService)

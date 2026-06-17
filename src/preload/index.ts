@@ -54,7 +54,8 @@ const api: ElectronAPI = {
       ipcRenderer.on('sql-log', handler)
       return () => ipcRenderer.removeListener('sql-log', handler)
     },
-    clear: () => ipcRenderer.invoke('sql-log:clear')
+    clear: () => ipcRenderer.invoke('sql-log:clear'),
+    list: (params) => ipcRenderer.invoke('sql-log:list', params)
   }
 }
 

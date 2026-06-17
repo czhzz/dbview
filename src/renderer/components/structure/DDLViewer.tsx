@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Skeleton } from 'antd'
 import { EditorView, basicSetup } from 'codemirror'
-import { sql, MySQL } from '@codemirror/lang-sql'
+import { sql } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useTranslation } from 'react-i18next'
-import { getCMDialect } from '../sql-editor/SqlEditor'
+import { getCMDialect } from '../../utils/sql-dialect'
 import type { DbType } from '../../utils/sql-quote'
 
 interface Props {

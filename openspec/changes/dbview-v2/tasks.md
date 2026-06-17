@@ -50,30 +50,30 @@
 ## 第3周：P2 体验优化（17h）
 
 ### P2-7 codemirror-dialect（2h）
-- [ ] 为 SQLite 和 Oracle 配置自定义 `SQLConfig` 关键字列表
-- [ ] 注册自定义 CodeMirror 方言
+- [x] 为 SQLite 和 Oracle 配置自定义 `SQLConfig` 关键字列表
+- [x] 注册自定义 CodeMirror 方言
 
 ### P2-8 tree-history-more（2h）
-- [ ] 树中查询文件夹底部添加"查看更多"按钮
-- [ ] 点击后打开 QueryHistory 面板
+- [x] 树中查询文件夹底部添加"查看更多"按钮
+- [x] 点击后打开 QueryHistory 面板
 
 ### P2-9 oracle-form-improve（1h）
-- [ ] 调整 oracleServiceName 字段位置
-- [ ] Oracle 类型下自动填充默认值 `xe`
-- [ ] 增加 Tooltip 提示
+- [x] 调整 oracleServiceName 字段位置
+- [x] Oracle 类型下自动填充默认值 `xe`
+- [x] 增加 Tooltip 提示
 
 ### P2-10 tree-refresh-flicker（2h）
-- [ ] 刷新时保留旧 children 直到新数据加载完成
-- [ ] 使用 `updateTreeNode` 局部更新代替整体替换
+- [x] 刷新时保留旧 children 直到新数据加载完成
+- [x] 使用 `updateTreeNode` 局部更新代替整体替换
 
 ### P2-1 sql-log-persist（6h）
-- [ ] SqlLogService 增加 sql.js 持久化存储
-- [ ] 新建日志表（conn_id, sql, category, timestamp 等）
-- [ ] 日志面板新增日期范围筛选
-- [ ] 保留内存缓存保证实时性能
+- [x] SqlLogService 增加 sql.js 持久化存储
+- [x] 新建日志表（conn_id, sql, category, timestamp 等）
+- [x] 日志面板新增日期范围筛选
+- [x] 保留内存缓存保证实时性能
 
 ### P2-5 connection-form-reorder（1h）→ 合并到 P2-9
-- [ ] 优化连接表单字段排列顺序
+- [x] 优化连接表单字段排列顺序
 
 ## 第4周：P2 工程基建（24h）
 

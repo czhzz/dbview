@@ -117,10 +117,14 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
           label={t('connection.type')}
           rules={[{ required: true }]}
         >
-          <Select options={DB_TYPES} onChange={() => {
-            // Reset port based on type
+          <Select options={DB_TYPES} onChange={(value) => {
+            // Reset port and Oracle defaults based on type
             const portMap: Record<string, number> = { mysql: 3306, postgresql: 5432, oracle: 1521 }
-            form.setFieldValue('port', portMap[form.getFieldValue('type')] || 3306)
+            form.setFieldValue('port', portMap[value] || 3306)
+            // Auto-fill Oracle service name default
+            if (value === 'oracle') {
+              form.setFieldValue('oracleServiceName', 'xe')
+            }
           }} />
         </Form.Item>
 
@@ -159,6 +163,16 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
               </Form.Item>
             </div>
 
+            {dbType === 'oracle' && (
+              <Form.Item
+                name="oracleServiceName"
+                label={t('connection.oracleServiceName')}
+                tooltip={t('connection.oracleServiceNameTooltip')}
+              >
+                <Input placeholder="xe" />
+              </Form.Item>
+            )}
+
             <Form.Item
               name="username"
               label={t('connection.username')}
@@ -174,16 +188,6 @@ const ConnectionForm: React.FC<Props> = ({ open, editConfig, onOk, onCancel, loa
             >
               <Input.Password placeholder={editConfig ? t('connection.passwordPlaceholder') : ''} />
             </Form.Item>
-
-            {dbType === 'oracle' && (
-              <Form.Item
-                name="oracleServiceName"
-                label={t('connection.oracleServiceName')}
-                tooltip={t('connection.oracleServiceNameTooltip')}
-              >
-                <Input placeholder="xe" />
-              </Form.Item>
-            )}
 
             <Form.Item
               name="database"

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react'
-import { Button, Tag, Empty, Tooltip } from 'antd'
+import { Button, Tag, Empty, Tooltip, DatePicker } from 'antd'
+import dayjs from 'dayjs'
 import {
   ClearOutlined,
   DownOutlined,
@@ -20,6 +21,8 @@ const categoryConfig: Record<string, { color: string; i18nKey: string; darkColor
   metadata: { color: '#8c8c8c', i18nKey: 'sqlLog.categoryMetadata', darkColor: '#a0a0a0' }
 }
 
+const { RangePicker } = DatePicker
+
 const SqlLogPanel: React.FC = () => {
   const { t } = useTranslation()
   const {
@@ -27,11 +30,14 @@ const SqlLogPanel: React.FC = () => {
     panelVisible,
     panelHeight,
     filter,
+    dateRange,
     addLog,
     clearLogs,
     togglePanel,
     setPanelHeight,
-    setFilter
+    setFilter,
+    setDateRange,
+    loadLogs
   } = useLogStore()
   const { isDark } = useTheme()
   const listRef = useRef<HTMLDivElement>(null)
@@ -46,6 +52,13 @@ const SqlLogPanel: React.FC = () => {
     })
     return unsub
   }, [addLog])
+
+  // Load persisted logs when the panel becomes visible (shows history after restart)
+  useEffect(() => {
+    if (panelVisible) {
+      void loadLogs()
+    }
+  }, [panelVisible, loadLogs])
 
   // Auto-scroll to bottom on new log
   useEffect(() => {
@@ -80,7 +93,14 @@ const SqlLogPanel: React.FC = () => {
     [panelHeight, setPanelHeight]
   )
 
-  const filteredLogs = filter === 'all' ? logs : logs.filter((l) => l.category === filter)
+  // Filter by category. Date-range filtering is applied server-side via
+  // loadLogs(), but we also guard here for realtime logs appended after a
+  // historical range was selected.
+  const filteredLogs = logs.filter((l) => {
+    if (filter !== 'all' && l.category !== filter) return false
+    if (dateRange && (l.timestamp < dateRange[0] || l.timestamp > dateRange[1])) return false
+    return true
+  })
 
   const bgColor = isDark ? '#1e1e1e' : '#ffffff'
   const borderColor = isDark ? '#333' : '#e8e8e8'
@@ -137,6 +157,22 @@ const SqlLogPanel: React.FC = () => {
               </Button>
             ))}
           </div>
+
+          {/* Date range filter */}
+          <RangePicker
+            size="small"
+            style={{ marginLeft: 8, fontSize: 11, maxWidth: 220 }}
+            placeholder={[t('sqlLog.dateRange'), t('sqlLog.dateRange')]}
+            value={dateRange ? [dayjs(dateRange[0]), dayjs(dateRange[1])] : null}
+            showTime
+            onChange={(values) => {
+              if (values && values[0] && values[1]) {
+                setDateRange([values[0].valueOf(), values[1].valueOf()])
+              } else {
+                setDateRange(null)
+              }
+            }}
+          />
         </div>
 
         <div style={{ display: 'flex', gap: 4 }}>

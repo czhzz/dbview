@@ -235,7 +235,10 @@
     "executionTime": "Duration",
     "rowCount": "Rows",
     "source": "Source",
-    "connection": "Connection"
+    "connection": "Connection",
+    "dateRange": "Time Range",
+    "dateRangePlaceholder": "Select date range",
+    "allTime": "All Time"
   },
   "settings": {
     "title": "Settings",

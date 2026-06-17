@@ -79,5 +79,12 @@ export interface ElectronAPI {
   sqlLog: {
     onLog: (callback: (entry: SqlLogEntry) => void) => () => void
     clear: () => Promise<void>
+    list: (params?: {
+      startTime?: number
+      endTime?: number
+      connId?: string
+      category?: SqlLogEntry['category']
+      limit?: number
+    }) => Promise<SqlLogEntry[]>
   }
 }

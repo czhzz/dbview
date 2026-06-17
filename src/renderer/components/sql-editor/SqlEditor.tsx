@@ -8,7 +8,7 @@ import {
   HistoryOutlined
 } from '@ant-design/icons'
 import { EditorView, basicSetup } from 'codemirror'
-import { sql, MySQL, PostgreSQL } from '@codemirror/lang-sql'
+import { sql } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { keymap } from '@codemirror/view'
 import { format as sqlFormat, type SqlLanguage } from 'sql-formatter'
@@ -17,6 +17,7 @@ import { sqlApi, historyApi } from '../../services/api'
 import { useUIStore } from '../../stores/uiStore'
 import { useConnectionStore } from '../../stores/connectionStore'
 import { useTheme } from '../../hooks/useTheme'
+import { getCMDialect } from '../../utils/sql-dialect'
 import DataExport from '../data-table/DataExport'
 import QueryHistory from './QueryHistory'
 import type { SQLResult } from '../../types/database'
@@ -43,14 +44,7 @@ function getFormatterLanguage(dbType: string): SqlLanguage {
 }
 
 /** Map db type to CodeMirror SQL dialect */
-export function getCMDialect(dbType: string) {
-  switch (dbType) {
-    case 'postgresql':
-      return PostgreSQL
-    default:
-      return MySQL
-  }
-}
+export { getCMDialect } from '../../utils/sql-dialect'
 
 const DB_TYPE_LABELS: Record<string, string> = {
   mysql: 'MySQL',

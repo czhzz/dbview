@@ -235,7 +235,10 @@
     "executionTime": "耗时",
     "rowCount": "行数",
     "source": "来源",
-    "connection": "连接"
+    "connection": "连接",
+    "dateRange": "时间范围",
+    "dateRangePlaceholder": "选择日期范围",
+    "allTime": "全部时间"
   },
   "settings": {
     "title": "设置",

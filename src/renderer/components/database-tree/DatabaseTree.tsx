@@ -20,7 +20,8 @@ import {
   DeleteOutlined,
   HistoryOutlined,
   PlusOutlined,
-  PlaySquareOutlined
+  PlaySquareOutlined,
+  LoadingOutlined
 } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
 import { databaseApi, connectionApi, historyApi } from '../../services/api'
@@ -80,6 +81,10 @@ const DatabaseTree: React.FC = () => {
   treeDataRef.current = treeData
   const [expandedKeys, setExpandedKeys] = React.useState<React.Key[]>([])
   const prevConnectedRef = React.useRef<Set<string>>(new Set())
+
+  // Nodes currently being refreshed — used to show a loading indicator without
+  // dropping the existing children (avoids the refresh flicker).
+  const [refreshingKeys, setRefreshingKeys] = React.useState<Set<string>>(new Set())
 
   // Connection form state
   const [formOpen, setFormOpen] = React.useState(false)
@@ -779,15 +784,31 @@ const DatabaseTree: React.FC = () => {
           label: t('table.refresh'),
           onClick: async () => {
             const key = String(node.key)
-            // Load children and eagerly pre-load sub-folders so antd doesn't
-            // block on its internal loadedKeys cache
-            const children = await loadChildren(key)
-            for (const child of children) {
-              if (!child.isLeaf) {
-                child.children = await loadChildren(String(child.key))
-              }
+            // Mark node as refreshing (shows spinner, keeps old children visible)
+            setRefreshingKeys((prev) => new Set(prev).add(key))
+            try {
+              // Load children, keeping old children visible until new data is ready.
+              const children = await loadChildren(key)
+              // Eagerly pre-load sub-folders IN PARALLEL so antd doesn't block on
+              // its internal loadedKeys cache. Parallelizing reduces the window
+              // where stale data is shown.
+              await Promise.all(
+                children
+                  .filter((child) => !child.isLeaf)
+                  .map(async (child) => {
+                    child.children = await loadChildren(String(child.key))
+                  })
+              )
+              // Partial update: only replace this node's children, leave the rest
+              // of the tree untouched (prevents full re-render flicker).
+              setTreeData((prev) => updateTreeNode(prev, key, children))
+            } finally {
+              setRefreshingKeys((prev) => {
+                const next = new Set(prev)
+                next.delete(key)
+                return next
+              })
             }
-            setTreeData((prev) => updateTreeNode(prev, key, children))
           }
         },
         {
@@ -991,15 +1012,23 @@ const DatabaseTree: React.FC = () => {
 
   const renderTitle = (node: DataNode): React.ReactNode => {
     const menuItems = getContextMenu(node)
+    const isRefreshing = refreshingKeys.has(String(node.key))
+
+    const content = (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        {node.title as React.ReactNode}
+        {isRefreshing && <LoadingOutlined spin style={{ fontSize: 11, color: '#1677ff' }} />}
+      </span>
+    )
 
     if (menuItems) {
       return (
         <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']}>
-          <span>{node.title as React.ReactNode}</span>
+          {content}
         </Dropdown>
       )
     }
-    return <span>{node.title as React.ReactNode}</span>
+    return content
   }
 
   return (

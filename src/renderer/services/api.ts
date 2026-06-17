@@ -79,5 +79,7 @@ export const sqlApi = {
 export const sqlLogApi = {
   onLog: (callback: Parameters<typeof getAPI>[0]['sqlLog']['onLog'][0]) =>
     getAPI().sqlLog.onLog(callback),
-  clear: () => getAPI().sqlLog.clear()
+  clear: () => getAPI().sqlLog.clear(),
+  list: (params?: Parameters<typeof getAPI>[0]['sqlLog']['list'][0]) =>
+    getAPI().sqlLog.list(params)
 }
