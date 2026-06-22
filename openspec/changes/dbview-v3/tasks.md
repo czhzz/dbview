@@ -8,19 +8,19 @@
 
 ### 1.1 依赖安装与项目配置
 
-- [ ] 1.1.1 安装 `@xyflow/react`、`dagre`、`@tanstack/react-virtual` 依赖
-- [ ] 1.1.2 安装 `xlsx`、`papaparse` 数据导入依赖
-- [ ] 1.1.3 更新 `electron.vite.config.ts` 确保新依赖正确打包
-- [ ] 1.1.4 更新 preload `types.ts` 添加新的 IPC 方法类型声明
-- [ ] 1.1.5 更新 `api.ts` 添加新的 IPC 调用包装
+- [x] 1.1.1 安装 `@xyflow/react`、`dagre`、`@tanstack/react-virtual` 依赖
+- [x] 1.1.2 安装 `xlsx`、`papaparse` 数据导入依赖
+- [x] 1.1.3 更新 `electron.vite.config.ts` 确保新依赖正确打包
+- [x] 1.1.4 更新 preload `types.ts` 添加新的 IPC 方法类型声明
+- [x] 1.1.5 更新 `api.ts` 添加新的 IPC 调用包装
 
 ### 1.2 IPC 通道注册
 
-- [ ] 1.2.1 注册 `diff:*` IPC 处理器（compare/compareData/generateScript/executeMigration）
-- [ ] 1.2.2 注册 `import:*` IPC 处理器（preview/execute/createTable）
-- [ ] 1.2.3 注册 `profiling:*` IPC 处理器（explain/analyze）
-- [ ] 1.2.4 注册 `connection:getStatuses` IPC 处理器
-- [ ] 1.2.5 注册 `shortcut:save` / `shortcut:load` IPC 处理器
+- [x] 1.2.1 注册 `diff:*` IPC 处理器（compare/compareData/generateScript/executeMigration）
+- [x] 1.2.2 注册 `import:*` IPC 处理器（preview/execute/createTable）
+- [x] 1.2.3 注册 `profiling:*` IPC 处理器（explain/analyze）
+- [x] 1.2.4 注册 `connection:getStatuses` IPC 处理器
+- [x] 1.2.5 注册 `shortcut:save` / `shortcut:load` IPC 处理器
 
 ---
 

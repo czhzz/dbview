@@ -78,4 +78,15 @@ export function registerConnectionIpc(
   ipcMain.handle('connection:deleteGroup', async (_event, id: string) => {
     store.deleteGroup(id)
   })
+
+  // v0.3.0: connection health status
+  ipcMain.handle('connection:getStatuses', async () => {
+    const activeIds = manager.getActiveConnectionIds()
+    return activeIds.map(id => ({
+      connId: id,
+      status: 'connected' as const,
+      lastHeartbeat: Date.now(),
+      reconnectAttempts: 0
+    }))
+  })
 }

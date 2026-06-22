@@ -86,3 +86,99 @@ export interface RoutineInfo {
   returnType?: string
   definition?: string
 }
+
+// === v0.3.0 新增类型 ===
+
+export interface ErDiagramTable {
+  name: string
+  comment?: string
+  columns: ColumnInfo[]
+  primaryKey: string[]
+  foreignKeys: ForeignKeyInfo[]
+}
+
+export interface ForeignKeyInfo {
+  column: string
+  refTable: string
+  refColumn: string
+  constraintName?: string
+}
+
+export interface ErDiagramData {
+  tables: ErDiagramTable[]
+}
+
+export interface UnifiedExplainPlan {
+  operation: string
+  nodeType: string
+  estimatedRows: number
+  estimatedCost: number
+  actualRows?: number
+  actualTime?: number
+  details: Record<string, unknown>
+  children: UnifiedExplainPlan[]
+}
+
+export interface DiffReport {
+  tables: TableDiff[]
+}
+
+export interface TableDiff {
+  name: string
+  status: 'added' | 'removed' | 'modified' | 'identical'
+  columns?: ColumnDiff[]
+  indexes?: IndexDiff[]
+}
+
+export interface ColumnDiff {
+  name: string
+  status: 'added' | 'removed' | 'modified'
+  oldType?: string
+  newType?: string
+  oldNullable?: boolean
+  newNullable?: boolean
+  oldDefault?: string | null
+  newDefault?: string | null
+}
+
+export interface IndexDiff {
+  name: string
+  status: 'added' | 'removed' | 'modified'
+  oldColumns?: string[]
+  newColumns?: string[]
+  oldUnique?: boolean
+  newUnique?: boolean
+}
+
+export interface ImportPreview {
+  columns: string[]
+  rows: Record<string, unknown>[]
+  totalRows: number
+  detectedTypes: Record<string, string>
+  encoding?: string
+}
+
+export interface ImportResult {
+  importedRows: number
+  errors: ImportError[]
+}
+
+export interface ImportError {
+  row: number
+  message: string
+}
+
+export interface ConnectionStatus {
+  connId: string
+  status: 'connected' | 'reconnecting' | 'disconnected' | 'never'
+  lastHeartbeat?: number
+  reconnectAttempts?: number
+}
+
+export interface ShortcutEntry {
+  id: string
+  label: string
+  keys: string
+  category: string
+  defaultKeys: string
+}

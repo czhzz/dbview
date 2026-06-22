@@ -1,5 +1,5 @@
 import type { ConnectionConfig, ConnectionConfigInput, ConnectionTestResult, ConnectionGroup } from '../renderer/types/connection'
-import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, TreeNode, UserInfo, PaginationQuery, PaginationResult, SQLResult, RoutineInfo } from '../renderer/types/database'
+import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, TreeNode, UserInfo, PaginationQuery, PaginationResult, SQLResult, RoutineInfo, ErDiagramData, UnifiedExplainPlan, DiffReport, ImportPreview, ImportResult, ConnectionStatus, ShortcutEntry } from '../renderer/types/database'
 
 export interface SaveDialogOptions {
   defaultPath?: string
@@ -56,6 +56,8 @@ export interface ElectronAPI {
     createGroup: (name: string) => Promise<ConnectionGroup>
     renameGroup: (id: string, name: string) => Promise<void>
     deleteGroup: (id: string) => Promise<void>
+    // v0.3.0
+    getStatuses: () => Promise<ConnectionStatus[]>
   }
   database: {
     getDatabases: (connId: string) => Promise<string[]>
@@ -86,5 +88,34 @@ export interface ElectronAPI {
       category?: SqlLogEntry['category']
       limit?: number
     }) => Promise<SqlLogEntry[]>
+  }
+
+  // === v0.3.0 新增 IPC ===
+
+  erDiagram: {
+    getData: (connId: string, schema?: string) => Promise<ErDiagramData>
+  }
+
+  diff: {
+    compare: (sourceId: string, targetId: string) => Promise<DiffReport>
+    compareData: (sourceConnId: string, targetConnId: string, table: string) => Promise<{ inserts: Record<string, unknown>[]; updates: Record<string, unknown>[]; deletes: Record<string, unknown>[] }>
+    generateScript: (report: DiffReport, sourceType: string, targetType: string) => Promise<string>
+    executeMigration: (connId: string, sql: string) => Promise<{ success: boolean; errors: string[] }>
+  }
+
+  import: {
+    preview: (filePath: string) => Promise<ImportPreview>
+    execute: (connId: string, table: string, filePath: string, columnMapping: Record<string, string>, options?: { batchSize?: number }) => Promise<ImportResult>
+    createTable: (connId: string, tableName: string, columns: { name: string; type: string }[]) => Promise<{ success: boolean; ddl: string }>
+  }
+
+  profiling: {
+    explain: (connId: string, sql: string) => Promise<UnifiedExplainPlan>
+    analyzeSlowQueries: (connId: string) => Promise<{ sql: string; duration: number; timestamp: number }[]>
+  }
+
+  shortcut: {
+    save: (shortcuts: ShortcutEntry[]) => Promise<void>
+    load: () => Promise<ShortcutEntry[]>
   }
 }

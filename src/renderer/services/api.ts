@@ -44,7 +44,8 @@ export const connectionApi = {
   listGroups: () => getAPI().connection.listGroups(),
   createGroup: (name: string) => getAPI().connection.createGroup(name),
   renameGroup: (id: string, name: string) => getAPI().connection.renameGroup(id, name),
-  deleteGroup: (id: string) => getAPI().connection.deleteGroup(id)
+  deleteGroup: (id: string) => getAPI().connection.deleteGroup(id),
+  getStatuses: () => getAPI().connection.getStatuses()
 }
 
 export const databaseApi = {
@@ -82,4 +83,44 @@ export const sqlLogApi = {
   clear: () => getAPI().sqlLog.clear(),
   list: (params?: Parameters<typeof getAPI>[0]['sqlLog']['list'][0]) =>
     getAPI().sqlLog.list(params)
+}
+
+// === v0.3.0 新增 API ===
+
+export const erDiagramApi = {
+  getData: (connId: string, schema?: string) =>
+    getAPI().erDiagram.getData(connId, schema)
+}
+
+export const diffApi = {
+  compare: (sourceId: string, targetId: string) =>
+    getAPI().diff.compare(sourceId, targetId),
+  compareData: (sourceConnId: string, targetConnId: string, table: string) =>
+    getAPI().diff.compareData(sourceConnId, targetConnId, table),
+  generateScript: (report: Parameters<typeof getAPI>[0]['diff']['generateScript'][0], sourceType: string, targetType: string) =>
+    getAPI().diff.generateScript(report, sourceType, targetType),
+  executeMigration: (connId: string, sql: string) =>
+    getAPI().diff.executeMigration(connId, sql)
+}
+
+export const importApi = {
+  preview: (filePath: string) =>
+    getAPI().import.preview(filePath),
+  execute: (connId: string, table: string, filePath: string, columnMapping: Record<string, string>, options?: { batchSize?: number }) =>
+    getAPI().import.execute(connId, table, filePath, columnMapping, options),
+  createTable: (connId: string, tableName: string, columns: { name: string; type: string }[]) =>
+    getAPI().import.createTable(connId, tableName, columns)
+}
+
+export const profilingApi = {
+  explain: (connId: string, sql: string) =>
+    getAPI().profiling.explain(connId, sql),
+  analyzeSlowQueries: (connId: string) =>
+    getAPI().profiling.analyzeSlowQueries(connId)
+}
+
+export const shortcutApi = {
+  save: (shortcuts: Parameters<typeof getAPI>[0]['shortcut']['save'][0]) =>
+    getAPI().shortcut.save(shortcuts),
+  load: () => getAPI().shortcut.load()
 }

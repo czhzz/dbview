@@ -7,6 +7,11 @@ import { registerSqlIpc } from './sql.ipc'
 import { registerDialogIpc } from './dialog.ipc'
 import { registerFileIpc } from './file.ipc'
 import { initHistoryStore, registerHistoryIpc } from './history.ipc'
+import { registerErDiagramIpc } from './er-diagram.ipc'
+import { registerDiffIpc } from './diff.ipc'
+import { registerImportIpc } from './import.ipc'
+import { registerProfilingIpc } from './profiling.ipc'
+import { registerShortcutIpc } from './shortcut.ipc'
 
 let store: ConnectionStore | null = null
 let manager: ConnectionManager | null = null
@@ -29,6 +34,13 @@ export async function registerAllIpc(): Promise<void> {
   registerDatabaseIpc(manager)
   registerSqlIpc(manager)
   registerHistoryIpc()
+
+  // v0.3.0 IPC handlers (scaffolding)
+  registerErDiagramIpc(manager)
+  registerDiffIpc(manager)
+  registerImportIpc(manager)
+  registerProfilingIpc(manager)
+  registerShortcutIpc()
 }
 
 export function getConnectionManager(): ConnectionManager | null {
