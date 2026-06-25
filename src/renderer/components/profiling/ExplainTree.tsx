@@ -17,11 +17,11 @@ function getCostColor(cost: number): string {
   return '#ff4d4f'
 }
 
-function flattenPlan(node: UnifiedExplainPlan, depth = 0): DataNode[] {
+function flattenPlan(node: UnifiedExplainPlan, depth = 0, index = 0): DataNode[] {
   const color = getCostColor(node.estimatedCost)
   const nodes: DataNode[] = [
     {
-      key: `${depth}-${node.operation}`,
+      key: `${depth}-${index}-${node.operation}`,
       title: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
           <span style={{ fontWeight: depth === 0 ? 600 : 400 }}>{node.operation}</span>
@@ -43,7 +43,7 @@ function flattenPlan(node: UnifiedExplainPlan, depth = 0): DataNode[] {
           )}
         </span>
       ),
-      children: node.children.length > 0 ? flattenPlan(node.children, depth + 1) : undefined
+      children: node.children.length > 0 ? node.children.map((child, i) => flattenPlan(child, depth + 1, i)[0]) : undefined
     }
   ]
   return nodes

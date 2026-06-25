@@ -55,8 +55,17 @@ function buildWhereClause(graph: QueryGraph, dbType: string): string {
     switch (w.operator) {
       case 'IS NULL': return `${prefix}${col} IS NULL`
       case 'IS NOT NULL': return `${prefix}${col} IS NOT NULL`
-      case 'IN': return `${prefix}${col} IN (${w.value})`
-      case 'BETWEEN': return `${prefix}${col} BETWEEN ${w.value}`
+      case 'IN': {
+        const items = w.value.split(',').map((v) => quoteValue(v.trim(), dbType)).join(', ')
+        return `${prefix}${col} IN (${items})`
+      }
+      case 'BETWEEN': {
+        const parts = w.value.split(/\s+AND\s+/i)
+        if (parts.length === 2) {
+          return `${prefix}${col} BETWEEN ${quoteValue(parts[0].trim(), dbType)} AND ${quoteValue(parts[1].trim(), dbType)}`
+        }
+        return `${prefix}${col} BETWEEN ${quoteValue(w.value, dbType)}`
+      }
       default: return `${prefix}${col} ${w.operator} ${quoteValue(w.value, dbType)}`
     }
   })

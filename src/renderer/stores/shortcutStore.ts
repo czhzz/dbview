@@ -25,7 +25,7 @@ const DEFAULT_SHORTCUTS: ShortcutEntry[] = [
   { id: 'nav:closeTab', label: '关闭标签', keys: 'Ctrl+W', category: 'navigation', defaultKeys: 'Ctrl+W' },
   { id: 'nav:newTab', label: '新建查询', keys: 'Ctrl+T', category: 'navigation', defaultKeys: 'Ctrl+T' },
   // Data
-  { id: 'data:export', label: '导出数据', keys: 'Ctrl+Shift+E', category: 'data', defaultKeys: 'Ctrl+Shift+E' },
+  { id: 'data:export', label: '导出数据', keys: 'Ctrl+Shift+X', category: 'data', defaultKeys: 'Ctrl+Shift+X' },
   { id: 'data:saveEdits', label: '保存编辑', keys: 'Ctrl+S', category: 'data', defaultKeys: 'Ctrl+S' },
   // General
   { id: 'general:toggleSidebar', label: '切换侧边栏', keys: 'Ctrl+`', category: 'general', defaultKeys: 'Ctrl+`' },

@@ -150,8 +150,9 @@ export class ImportService {
 
       if (valuesList.length > 0) {
         try {
-          const cols = Object.keys(columnMapping).map((k) => columnMapping[k]).join(', ')
-          const sql = `INSERT INTO ${table} (${cols}) VALUES\n${valuesList.join(',\n')}`
+          const quoteId = (name: string) => `"${name}"`
+          const cols = Object.keys(columnMapping).map((k) => quoteId(columnMapping[k])).join(', ')
+          const sql = `INSERT INTO ${quoteId(table)} (${cols}) VALUES\n${valuesList.join(',\n')}`
           await driver.executeQuery(sql)
           importedRows += valuesList.length
         } catch (err) {
@@ -171,8 +172,9 @@ export class ImportService {
     tableName: string,
     columns: { name: string; type: string }[]
   ): Promise<{ success: boolean; ddl: string }> {
-    const colDefs = columns.map((c) => `  ${c.name} ${c.type}`).join(',\n')
-    const ddl = `CREATE TABLE ${tableName} (\n${colDefs}\n)`
+    const quoteId = (name: string) => `"${name}"`
+    const colDefs = columns.map((c) => `  ${quoteId(c.name)} ${c.type}`).join(',\n')
+    const ddl = `CREATE TABLE ${quoteId(tableName)} (\n${colDefs}\n)`
 
     try {
       await driver.executeQuery(ddl)

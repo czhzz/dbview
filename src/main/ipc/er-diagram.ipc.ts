@@ -5,11 +5,11 @@ import type { ErDiagramData, ErDiagramTable, ForeignKeyInfo } from '../../render
 export function registerErDiagramIpc(manager: ConnectionManager): void {
   ipcMain.handle('erDiagram:getData', async (_event, connId: string, schema?: string) => {
     const driver = await manager.getConnection(connId)
-    const tables = await driver.getTables(connId, schema)
+    const tables = await driver.getTables(schema)
     const erTables: ErDiagramTable[] = []
 
     for (const table of tables) {
-      const columns = await driver.getColumns(connId, table.name, schema)
+      const columns = await driver.getColumns(table.name, schema)
       const primaryKey = columns.filter(c => c.key === 'PRI').map(c => c.name)
       const foreignKeys: ForeignKeyInfo[] = await driver.getForeignKeys(table.name, schema)
 

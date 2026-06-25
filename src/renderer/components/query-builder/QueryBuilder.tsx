@@ -91,7 +91,13 @@ const QueryBuilder: React.FC<Props> = ({ connId, schema, dbType, onExecute, onSe
         ? reactFlowWrapper.current.getBoundingClientRect()
         : { left: 0, top: 0 }
 
-      const newId = tableName
+      // Deduplicate: append _2, _3 if table already on canvas
+      const existingIds = new Set(nodes.map((n) => n.id))
+      let newId = tableName
+      let suffix = 2
+      while (existingIds.has(newId)) {
+        newId = `${tableName}_${suffix++}`
+      }
       const newNode: Node = {
         id: newId,
         type: 'tableNode',

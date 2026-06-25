@@ -64,8 +64,8 @@ const api: ElectronAPI = {
     getData: (connId, schema) => ipcRenderer.invoke('erDiagram:getData', connId, schema)
   },
   diff: {
-    compare: (sourceId, targetId) => ipcRenderer.invoke('diff:compare', sourceId, targetId),
-    compareData: (sourceConnId, targetConnId, table) => ipcRenderer.invoke('diff:compareData', sourceConnId, targetConnId, table),
+    compare: (sourceId, targetId, sourceSchema?, targetSchema?) => ipcRenderer.invoke('diff:compare', sourceId, targetId, sourceSchema, targetSchema),
+    compareData: (sourceConnId, targetConnId, table, pkColumns?, sourceSchema?, targetSchema?) => ipcRenderer.invoke('diff:compareData', sourceConnId, targetConnId, table, pkColumns, sourceSchema, targetSchema),
     generateScript: (report, sourceType, targetType) => ipcRenderer.invoke('diff:generateScript', report, sourceType, targetType),
     executeMigration: (connId, sql) => ipcRenderer.invoke('diff:executeMigration', connId, sql)
   },

@@ -93,10 +93,10 @@ export const erDiagramApi = {
 }
 
 export const diffApi = {
-  compare: (sourceId: string, targetId: string) =>
-    getAPI().diff.compare(sourceId, targetId),
-  compareData: (sourceConnId: string, targetConnId: string, table: string) =>
-    getAPI().diff.compareData(sourceConnId, targetConnId, table),
+  compare: (sourceId: string, targetId: string, sourceSchema?: string, targetSchema?: string) =>
+    getAPI().diff.compare(sourceId, targetId, sourceSchema, targetSchema),
+  compareData: (sourceConnId: string, targetConnId: string, table: string, pkColumns?: string[], sourceSchema?: string, targetSchema?: string) =>
+    getAPI().diff.compareData(sourceConnId, targetConnId, table, pkColumns, sourceSchema, targetSchema),
   generateScript: (report: Parameters<typeof getAPI>[0]['diff']['generateScript'][0], sourceType: string, targetType: string) =>
     getAPI().diff.generateScript(report, sourceType, targetType),
   executeMigration: (connId: string, sql: string) =>

@@ -22,11 +22,25 @@ export class DiffService {
       const inTarget = targetMap.has(name)
 
       if (!inSource) {
-        tableDiffs.push({ name, status: 'removed', columns: [], indexes: [] })
+        const targetCols = await targetDriver.getColumns(name, targetSchema)
+        const targetIdxs = await targetDriver.getIndexes(name, targetSchema)
+        tableDiffs.push({
+          name,
+          status: 'removed',
+          columns: targetCols.map((c) => ({ name: c.name, status: 'removed' as const })),
+          indexes: targetIdxs.map((i) => ({ name: i.name, status: 'removed' as const }))
+        })
         continue
       }
       if (!inTarget) {
-        tableDiffs.push({ name, status: 'added', columns: [], indexes: [] })
+        const sourceCols = await sourceDriver.getColumns(name, sourceSchema)
+        const sourceIdxs = await sourceDriver.getIndexes(name, sourceSchema)
+        tableDiffs.push({
+          name,
+          status: 'added',
+          columns: sourceCols.map((c) => ({ name: c.name, status: 'added' as const, newType: c.type, newNullable: c.nullable, newDefault: c.defaultValue })),
+          indexes: sourceIdxs.map((i) => ({ name: i.name, status: 'added' as const, newColumns: i.columns, newUnique: i.unique }))
+        })
         continue
       }
 

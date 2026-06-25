@@ -1,7 +1,9 @@
-import React, { Component, type ReactNode } from 'react'
+import React, { Component, type ReactNode, useEffect } from 'react'
 import { Result, Button } from 'antd'
 import { useTranslation } from 'react-i18next'
 import MainLayout from './layouts/MainLayout'
+import { useHotkeys, registerDefaultActions } from './hooks/useHotkeys'
+import { useShortcutStore } from './stores/shortcutStore'
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -41,6 +43,13 @@ const AppErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
 }
 
 const App: React.FC = () => {
+  useHotkeys()
+  useShortcutStore.getState().init()
+
+  useEffect(() => {
+    registerDefaultActions()
+  }, [])
+
   return (
     <AppErrorBoundary>
       <MainLayout />
