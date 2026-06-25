@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Table, Button, Space, Typography, Spin, Input, Popconfirm, message, Modal } from 'antd'
+import { Table, Button, Space, Typography, Spin, Input, Popconfirm, message, Modal, Tooltip } from 'antd'
 import {
   ReloadOutlined,
   ArrowUpOutlined,
@@ -8,7 +8,9 @@ import {
   PlusOutlined,
   DeleteOutlined,
   SaveOutlined,
-  CloseOutlined
+  CloseOutlined,
+  ColumnHeightOutlined,
+  BarsOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { dataApi, databaseApi, sqlApi } from '../../services/api'
@@ -16,6 +18,7 @@ import { useDbType } from '../../hooks/useDbType'
 import { generateDMLBatch, type PendingChange } from '../../utils/dml-generator'
 import { useUIStore } from '../../stores/uiStore'
 import DataExport from './DataExport'
+import VirtualTable from './VirtualTable'
 import type { PaginationResult, ColumnInfo } from '../../types/database'
 
 interface Props {
@@ -36,6 +39,11 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   const [sortColumn, setSortColumn] = useState<string | undefined>()
   const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('ASC')
   const { setStatusText } = useUIStore()
+
+  // -- Virtual scroll mode --
+  const [virtualMode, setVirtualMode] = useState(false)
+  const [virtualData, setVirtualData] = useState<Record<string, unknown>[]>([])
+  const [virtualLoading, setVirtualLoading] = useState(false)
 
   // -- Edit mode state --
   const [editing, setEditing] = useState(false)
@@ -91,6 +99,20 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // -- Virtual mode: load all rows --
+  const loadAllData = useCallback(async () => {
+    setVirtualLoading(true)
+    try {
+      const result = await sqlApi.execute(connId, `SELECT * FROM ${schema ? `\`${schema}\`.` : ''}\`${table}\``)
+      setVirtualData(result.rows)
+      setStatusText(t('dataTable.status', { table, total: result.rows.length, time: result.executionTime }))
+    } catch (err) {
+      setStatusText(t('dataTable.queryError', { message: err instanceof Error ? err.message : t('common.unknownError') }))
+    } finally {
+      setVirtualLoading(false)
+    }
+  }, [connId, table, schema, setStatusText, t])
 
   useEffect(() => {
     if (editing) {
@@ -505,6 +527,24 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
               orderBy: sortColumn ? { column: sortColumn, direction: sortDirection } : undefined
             }}
           />
+          <Tooltip title={virtualMode ? t('dataTable.switchToPagination') : t('dataTable.switchToVirtualScroll')}>
+            <Button
+              icon={virtualMode ? <BarsOutlined /> : <ColumnHeightOutlined />}
+              onClick={() => {
+                if (virtualMode) {
+                  setVirtualMode(false)
+                  loadData()
+                } else {
+                  setVirtualMode(true)
+                  loadAllData()
+                }
+              }}
+              size="small"
+              type={virtualMode ? 'primary' : 'default'}
+            >
+              {virtualMode ? t('dataTable.paginationMode') : t('dataTable.virtualScroll')}
+            </Button>
+          </Tooltip>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {t('table.totalRows', { count: data.total })} | {data.executionTime}ms
             {editing && hasChanges && (
@@ -516,41 +556,68 @@ const DataTable: React.FC<Props> = ({ connId, table, schema }) => {
         </Space>
       </div>
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <Table
-          className="result-table"
-          columns={columns}
-          dataSource={allRows.map((row, i) => ({ ...row, _key: i }))}
-          rowKey="_key"
-          loading={loading}
-          size="small"
-          scroll={{ x: 'max-content', y: 'calc(100vh - 240px)' }}
-          rowSelection={
-            editing
-              ? {
-                  selectedRowKeys,
-                  onChange: (keys) => setSelectedRowKeys(keys as number[])
-                }
-              : undefined
-          }
-          pagination={{
-            current: page,
-            pageSize,
-            total: data.total,
-            showSizeChanger: true,
-            pageSizeOptions: PAGE_SIZE_OPTIONS,
-            showTotal: (total) => t('table.totalRows', { count: total }),
-            onChange: (p, ps) => {
-              if (editing && pendingChanges.size > 0) {
-                setPendingNav({ page: p, pageSize: ps })
-                return
-              }
-              setPage(p)
-              setPageSize(ps)
+        {virtualMode ? (
+          <div style={{ height: 'calc(100vh - 240px)' }}>
+            <VirtualTable
+              columns={(data?.columns || []).map((col) => ({
+                key: col,
+                title: col,
+                width: 150
+              }))}
+              rows={virtualData}
+              estimatedRowHeight={32}
+              frozenColumnCount={0}
+              editing={editing}
+              editingCell={editingCell}
+              editValue={editValue}
+              onCellDoubleClick={handleCellDoubleClick}
+              onEditValueChange={setEditValue}
+              onCellSave={handleCellSave}
+              onCellCancel={handleCellCancel}
+              editInputRef={editInputRef}
+              selectedRowKeys={selectedRowKeys}
+              onSelectionChange={setSelectedRowKeys}
+              modifiedCells={modifiedCells}
+              pendingChanges={pendingChanges}
+            />
+          </div>
+        ) : (
+          <Table
+            className="result-table"
+            columns={columns}
+            dataSource={allRows.map((row, i) => ({ ...row, _key: i }))}
+            rowKey="_key"
+            loading={loading}
+            size="small"
+            scroll={{ x: 'max-content', y: 'calc(100vh - 240px)' }}
+            rowSelection={
+              editing
+                ? {
+                    selectedRowKeys,
+                    onChange: (keys) => setSelectedRowKeys(keys as number[])
+                  }
+                : undefined
             }
-          }}
-          sticky
-          virtual
-        />
+            pagination={{
+              current: page,
+              pageSize,
+              total: data.total,
+              showSizeChanger: true,
+              pageSizeOptions: PAGE_SIZE_OPTIONS,
+              showTotal: (total) => t('table.totalRows', { count: total }),
+              onChange: (p, ps) => {
+                if (editing && pendingChanges.size > 0) {
+                  setPendingNav({ page: p, pageSize: ps })
+                  return
+                }
+                setPage(p)
+                setPageSize(ps)
+              }
+            }}
+            sticky
+            virtual
+          />
+        )}
       </div>
     </div>
     </>

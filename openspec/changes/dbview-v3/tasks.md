@@ -28,16 +28,16 @@
 
 ### 2.1 虚拟滚动 DataTable
 
-- [ ] 2.1.1 创建 `VirtualTable` 组件，集成 `@tanstack/react-virtual`
-- [ ] 2.1.2 实现列渲染：固定列高、行高、列宽自适应
-- [ ] 2.1.3 实现列冻结（fixedColumns + scrollableColumns 分区）
-- [ ] 2.1.4 实现列拖动调整宽度
-- [ ] 2.1.5 实现列拖动重新排序
-- [ ] 2.1.6 实现行选择（checkbox + Shift+click 多选）
-- [ ] 2.1.7 实现复制功能（单单元格、多行 TSV/JSON、带表头）
-- [ ] 2.1.8 实现 Ctrl+A 全选（全部行，非仅可见行）
-- [ ] 2.1.9 集成到现有 DataTable 组件，支持分页/虚拟滚动模式切换
-- [ ] 2.1.10 验证虚拟滚动下编辑模式兼容性
+- [x] 2.1.1 创建 `VirtualTable` 组件，集成 `@tanstack/react-virtual`
+- [x] 2.1.2 实现列渲染：固定列高、行高、列宽自适应
+- [x] 2.1.3 实现列冻结（fixedColumns + scrollableColumns 分区）
+- [x] 2.1.4 实现列拖动调整宽度
+- [x] 2.1.5 实现列拖动重新排序
+- [x] 2.1.6 实现行选择（checkbox + Shift+click 多选）
+- [x] 2.1.7 实现复制功能（单单元格、多行 TSV/JSON、带表头）
+- [x] 2.1.8 实现 Ctrl+A 全选（全部行，非仅可见行）
+- [x] 2.1.9 集成到现有 DataTable 组件，支持分页/虚拟滚动模式切换
+- [x] 2.1.10 验证虚拟滚动下编辑模式兼容性
 
 ### 2.2 快捷键系统
 
