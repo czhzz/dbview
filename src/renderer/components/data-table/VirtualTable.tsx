@@ -375,13 +375,12 @@ const VirtualTable: React.FC<VirtualTableProps> = ({
                 style={{
                   position: 'sticky',
                   top: 0,
-                  zIndex: 3,
+                  zIndex: 4,
                   background: '#fafafa',
                   borderBottom: '1px solid #f0f0f0',
                   width: columnWidths[col] || 150,
                   minWidth: columnWidths[col] || 150,
-                  left: editing ? 40 + frozenColumns.indexOf(col) * (columnWidths[col] || 150) : frozenColumns.indexOf(col) * (columnWidths[col] || 150),
-                  zIndex: 4
+                  left: editing ? 40 + frozenColumns.indexOf(col) * (columnWidths[col] || 150) : frozenColumns.indexOf(col) * (columnWidths[col] || 150)
                 }}
               >
                 {renderHeaderCell(col)}
