@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react'
-import { Tree, Dropdown, message, Popconfirm, Input } from 'antd'
+import { Tree, Dropdown, message, Popconfirm, Input, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
 import {
   DatabaseOutlined,
@@ -21,7 +21,11 @@ import {
   HistoryOutlined,
   PlusOutlined,
   PlaySquareOutlined,
-  LoadingOutlined
+  LoadingOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
+  MinusCircleOutlined
 } from '@ant-design/icons'
 import type { DataNode } from 'antd/es/tree'
 import { databaseApi, connectionApi, historyApi } from '../../services/api'
@@ -88,6 +92,44 @@ const DatabaseTree: React.FC = () => {
 
   // Connection form state
   const [formOpen, setFormOpen] = React.useState(false)
+
+  // v0.3.0: Connection health statuses
+  const [connStatuses, setConnStatuses] = React.useState<Map<string, { status: string; lastHeartbeat?: number; reconnectAttempts?: number }>>(new Map())
+
+  React.useEffect(() => {
+    const pollStatus = async () => {
+      try {
+        const statuses = await connectionApi.getStatuses()
+        setConnStatuses(new Map(statuses.map((s) => [s.connId, s])))
+      } catch {
+        // Silently fail
+      }
+    }
+    pollStatus()
+    const interval = setInterval(pollStatus, 30000)
+    return () => clearInterval(interval)
+  }, [connectedIds])
+
+  const getStatusIcon = (connId: string): React.ReactNode => {
+    const status = connStatuses.get(connId)?.status
+    switch (status) {
+      case 'connected': return <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 11 }} />
+      case 'reconnecting': return <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 11 }} spin />
+      case 'disconnected': return <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 11 }} />
+      default: return <MinusCircleOutlined style={{ color: '#d9d9d9', fontSize: 11 }} />
+    }
+  }
+
+  const getStatusTooltip = (connId: string): string => {
+    const info = connStatuses.get(connId)
+    if (!info) return ''
+    const statusLabels: Record<string, string> = {
+      connected: '已连接',
+      reconnecting: `重新连接中 (${info.reconnectAttempts || 0}/3)`,
+      disconnected: '连接已断开'
+    }
+    return statusLabels[info.status] || ''
+  }
   const [editConfig, setEditConfig] = React.useState<ConnectionConfig | null>(null)
   const [formLoading, setFormLoading] = React.useState(false)
 
@@ -222,10 +264,14 @@ const DatabaseTree: React.FC = () => {
 
   const buildConnectionNode = (conn: ConnectionConfig): DataNode => {
     const isConnected = connectedIds.has(conn.id)
+    const tooltip = getStatusTooltip(conn.id)
     return {
       key: `conn:${conn.id}`,
       title: (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+          <Tooltip title={tooltip || undefined}>
+            {getStatusIcon(conn.id)}
+          </Tooltip>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conn.name}</span>
           <span style={{
             fontSize: 10,

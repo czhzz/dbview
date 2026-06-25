@@ -159,6 +159,10 @@ export class SQLiteDriver implements DatabaseDriver {
     return columns.filter((col) => col.key === 'PRI').map((col) => col.name)
   }
 
+  async getForeignKeys(_table: string, _schema?: string): Promise<{ column: string; refTable: string; refColumn: string; constraintName?: string }[]> {
+    return [] // SQLite FK info via PRAGMA foreign_key_list not yet implemented
+  }
+
   async getDDL(table: string, _schema?: string): Promise<string> {
     const db = this.getDb()
     const row = db

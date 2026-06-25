@@ -81,12 +81,6 @@ export function registerConnectionIpc(
 
   // v0.3.0: connection health status
   ipcMain.handle('connection:getStatuses', async () => {
-    const activeIds = manager.getActiveConnectionIds()
-    return activeIds.map(id => ({
-      connId: id,
-      status: 'connected' as const,
-      lastHeartbeat: Date.now(),
-      reconnectAttempts: 0
-    }))
+    return manager.getStatuses()
   })
 }

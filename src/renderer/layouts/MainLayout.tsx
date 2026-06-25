@@ -10,7 +10,8 @@ import {
   MenuUnfoldOutlined,
   CodeOutlined,
   FolderOutlined,
-  ApartmentOutlined
+  ApartmentOutlined,
+  DeploymentUnitOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/uiStore'
@@ -24,6 +25,7 @@ import { useEditorStore } from '../stores/editorStore'
 import { useLogStore } from '../stores/logStore'
 import SqlLogPanel from '../components/sql-log/SqlLogPanel'
 import QueryBuilder from '../components/query-builder/QueryBuilder'
+import ERDiagram from '../components/er-diagram/ERDiagram'
 import { useTheme, type ThemeMode } from '../hooks/useTheme'
 import { setLanguage, getCurrentLanguage } from '../i18n'
 import { connectionApi } from '../services/api'
@@ -117,8 +119,6 @@ const MainLayout: React.FC = () => {
             schema={tab.schema}
             dbType={dbType}
             onExecute={(sql) => {
-              // Execute directly and show in a new data tab
-              // For now, open a query tab with the SQL
               const queryTabKey = `query-${Date.now()}`
               useUIStore.getState().openTab({
                 key: queryTabKey,
@@ -141,6 +141,23 @@ const MainLayout: React.FC = () => {
           />
         )
       }
+      case 'er-diagram':
+        return (
+          <ERDiagram
+            connId={tab.connId}
+            schema={tab.schema}
+            onNavigateToTable={(tableName) => {
+              useUIStore.getState().openTab({
+                key: `structure:${tab.connId}:${tableName}`,
+                title: tableName,
+                type: 'structure',
+                connId: tab.connId,
+                table: tableName,
+                schema: tab.schema
+              })
+            }}
+          />
+        )
       default:
         return null
     }
@@ -263,6 +280,24 @@ const MainLayout: React.FC = () => {
                             key: `qb-${activeConnId}`,
                             title: t('queryBuilder.title'),
                             type: 'query-builder',
+                            connId: activeConnId
+                          })
+                        }
+                      }}
+                    />
+                  </Tooltip>
+                  <Tooltip title={t('erDiagram.open')}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DeploymentUnitOutlined />}
+                      onClick={() => {
+                        const activeConnId = useConnectionStore.getState().activeConnectionId
+                        if (activeConnId) {
+                          useUIStore.getState().openTab({
+                            key: `er-${activeConnId}`,
+                            title: t('erDiagram.title'),
+                            type: 'er-diagram',
                             connId: activeConnId
                           })
                         }

@@ -3,7 +3,7 @@ import { create } from 'zustand'
 interface TabItem {
   key: string
   title: string
-  type: 'data' | 'structure' | 'query' | 'query-builder'
+  type: 'data' | 'structure' | 'query' | 'query-builder' | 'er-diagram'
   connId: string
   table?: string
   schema?: string

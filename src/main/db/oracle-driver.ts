@@ -218,6 +218,10 @@ export class OracleDriver implements DatabaseDriver {
     }))
   }
 
+  async getForeignKeys(_table: string, _schema?: string): Promise<{ column: string; refTable: string; refColumn: string; constraintName?: string }[]> {
+    return [] // Oracle FK via all_constraints not yet implemented
+  }
+
   async getPrimaryKey(table: string, schema?: string): Promise<string[]> {
     const schemaName = (schema || this.config?.username || '').toUpperCase()
     const result = await this.getPool().execute<{ column_name: string }>(

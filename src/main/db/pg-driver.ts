@@ -225,6 +225,33 @@ export class PostgreSQLDriver implements DatabaseDriver {
     return result.rows.map((r) => r.column_name)
   }
 
+  async getForeignKeys(table: string, schema?: string): Promise<{ column: string; refTable: string; refColumn: string; constraintName?: string }[]> {
+    const schemaName = schema || 'public'
+    try {
+      const result = await this.getPool().query<{ column_name: string; foreign_table_name: string; foreign_column_name: string; constraint_name: string }>(
+        `SELECT kcu.column_name, ccu.table_name AS foreign_table_name,
+                ccu.column_name AS foreign_column_name, tc.constraint_name
+         FROM information_schema.table_constraints tc
+         JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+           AND tc.table_schema = kcu.table_schema
+         JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+           AND tc.table_schema = ccu.table_schema
+         WHERE tc.constraint_type = 'FOREIGN KEY'
+           AND tc.table_schema = $1
+           AND tc.table_name = $2`,
+        [schemaName, table]
+      )
+      return result.rows.map((r) => ({
+        column: r.column_name,
+        refTable: r.foreign_table_name,
+        refColumn: r.foreign_column_name,
+        constraintName: r.constraint_name
+      }))
+    } catch {
+      return []
+    }
+  }
+
   async getDDL(table: string, schema?: string): Promise<string> {
     const schemaName = schema || 'public'
 

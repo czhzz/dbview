@@ -20,6 +20,7 @@ export interface DatabaseDriver {
   getColumns(table: string, schema?: string): Promise<ColumnInfo[]>
   getIndexes(table: string, schema?: string): Promise<IndexInfo[]>
   getPrimaryKey(table: string, schema?: string): Promise<string[]>
+  getForeignKeys(table: string, schema?: string): Promise<{ column: string; refTable: string; refColumn: string; constraintName?: string }[]>
   getDDL(table: string, schema?: string): Promise<string>
   getRoutines(schema?: string): Promise<RoutineInfo[]>
   getRoutineDefinition(name: string, type: 'PROCEDURE' | 'FUNCTION', schema?: string): Promise<string>

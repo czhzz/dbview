@@ -168,6 +168,26 @@ export class MySQLDriver implements DatabaseDriver {
     return rows.map((r: RowDataPacket) => String(r.COLUMN_NAME))
   }
 
+  async getForeignKeys(table: string, schema?: string): Promise<{ column: string; refTable: string; refColumn: string; constraintName?: string }[]> {
+    const db = schema || this.config?.database || ''
+    try {
+      const [rows] = await this.getPool().query<RowDataPacket[]>(
+        `SELECT k.COLUMN_NAME, k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, k.CONSTRAINT_NAME
+         FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+         WHERE k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ? AND k.REFERENCED_TABLE_NAME IS NOT NULL`,
+        [db, table]
+      )
+      return rows.map((r: RowDataPacket) => ({
+        column: String(r.COLUMN_NAME),
+        refTable: String(r.REFERENCED_TABLE_NAME),
+        refColumn: String(r.REFERENCED_COLUMN_NAME),
+        constraintName: String(r.CONSTRAINT_NAME)
+      }))
+    } catch {
+      return []
+    }
+  }
+
   async getDDL(table: string, schema?: string): Promise<string> {
     const db = schema || this.config?.database || ''
     try {

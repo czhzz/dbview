@@ -11,16 +11,7 @@ export function registerErDiagramIpc(manager: ConnectionManager): void {
     for (const table of tables) {
       const columns = await driver.getColumns(connId, table.name, schema)
       const primaryKey = columns.filter(c => c.key === 'PRI').map(c => c.name)
-
-      // Infer foreign keys from column comments or naming convention
-      // TODO: v0.3.0 Week 4 — use INFORMATION_SCHEMA.KEY_COLUMN_USAGE for precise FK detection
-      const foreignKeys: ForeignKeyInfo[] = columns
-        .filter(c => c.name.endsWith('_id') || c.name.endsWith('_uuid'))
-        .map(c => ({
-          column: c.name,
-          refTable: '',
-          refColumn: 'id'
-        }))
+      const foreignKeys: ForeignKeyInfo[] = await driver.getForeignKeys(table.name, schema)
 
       erTables.push({ name: table.name, comment: table.comment, columns, primaryKey, foreignKeys })
     }

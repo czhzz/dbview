@@ -27,7 +27,8 @@ const api: ElectronAPI = {
     listGroups: () => ipcRenderer.invoke('connection:listGroups'),
     createGroup: (name) => ipcRenderer.invoke('connection:createGroup', name),
     renameGroup: (id, name) => ipcRenderer.invoke('connection:renameGroup', id, name),
-    deleteGroup: (id) => ipcRenderer.invoke('connection:deleteGroup', id)
+    deleteGroup: (id) => ipcRenderer.invoke('connection:deleteGroup', id),
+    getStatuses: () => ipcRenderer.invoke('connection:getStatuses')
   },
   database: {
     getDatabases: (connId) => ipcRenderer.invoke('database:getDatabases', connId),
@@ -56,6 +57,30 @@ const api: ElectronAPI = {
     },
     clear: () => ipcRenderer.invoke('sql-log:clear'),
     list: (params) => ipcRenderer.invoke('sql-log:list', params)
+  },
+
+  // v0.3.0 IPC channels
+  erDiagram: {
+    getData: (connId, schema) => ipcRenderer.invoke('erDiagram:getData', connId, schema)
+  },
+  diff: {
+    compare: (sourceId, targetId) => ipcRenderer.invoke('diff:compare', sourceId, targetId),
+    compareData: (sourceConnId, targetConnId, table) => ipcRenderer.invoke('diff:compareData', sourceConnId, targetConnId, table),
+    generateScript: (report, sourceType, targetType) => ipcRenderer.invoke('diff:generateScript', report, sourceType, targetType),
+    executeMigration: (connId, sql) => ipcRenderer.invoke('diff:executeMigration', connId, sql)
+  },
+  import: {
+    preview: (filePath) => ipcRenderer.invoke('import:preview', filePath),
+    execute: (connId, table, filePath, columnMapping, options) => ipcRenderer.invoke('import:execute', connId, table, filePath, columnMapping, options),
+    createTable: (connId, tableName, columns) => ipcRenderer.invoke('import:createTable', connId, tableName, columns)
+  },
+  profiling: {
+    explain: (connId, sql) => ipcRenderer.invoke('profiling:explain', connId, sql),
+    analyzeSlowQueries: (connId) => ipcRenderer.invoke('profiling:analyzeSlowQueries', connId)
+  },
+  shortcut: {
+    save: (shortcuts) => ipcRenderer.invoke('shortcut:save', shortcuts),
+    load: () => ipcRenderer.invoke('shortcut:load')
   }
 }
 

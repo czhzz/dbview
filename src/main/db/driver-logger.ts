@@ -115,6 +115,10 @@ export class DriverLogger implements DatabaseDriver {
     return this.wrapMetadata('getPrimaryKey', () => this.driver.getPrimaryKey(table, schema), { table, schema })
   }
 
+  async getForeignKeys(table: string, schema?: string): Promise<{ column: string; refTable: string; refColumn: string; constraintName?: string }[]> {
+    return this.wrapMetadata('getForeignKeys', () => this.driver.getForeignKeys(table, schema), { table, schema })
+  }
+
   async getDDL(table: string, schema?: string): Promise<string> {
     return this.wrapMetadata('getDDL', () => this.driver.getDDL(table, schema), { table, schema })
   }
