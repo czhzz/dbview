@@ -41,13 +41,13 @@
 
 ### 2.2 快捷键系统
 
-- [ ] 2.2.1 创建 `shortcutStore`（Zustand），管理快捷键映射
-- [ ] 2.2.2 创建 `useHotkeys` hook，全局键盘事件监听
-- [ ] 2.2.3 实现快捷键冲突检测逻辑
-- [ ] 2.2.4 创建 ShortcutSettings 对话框（显示/编辑/重置）
-- [ ] 2.2.5 实现快捷键配置的导入/导出 JSON
-- [ ] 2.2.6 实现快捷键持久化（main 进程读写 JSON 文件）
-- [ ] 2.2.7 注册默认快捷键（Ctrl+Enter 执行、Ctrl+Shift+F 格式化、Ctrl+W 关 Tab、Ctrl+T 新建等）
+- [x] 2.2.1 创建 `shortcutStore`（Zustand），管理快捷键映射
+- [x] 2.2.2 创建 `useHotkeys` hook，全局键盘事件监听
+- [x] 2.2.3 实现快捷键冲突检测逻辑
+- [x] 2.2.4 创建 ShortcutSettings 对话框（显示/编辑/重置）
+- [x] 2.2.5 实现快捷键配置的导入/导出 JSON
+- [x] 2.2.6 实现快捷键持久化（main 进程读写 JSON 文件）
+- [x] 2.2.7 注册默认快捷键（Ctrl+Enter 执行、Ctrl+Shift+F 格式化、Ctrl+W 关 Tab、Ctrl+T 新建等）
 
 ---
 
@@ -55,22 +55,22 @@
 
 ### 3.1 查询构建器 — 核心
 
-- [ ] 3.1.1 创建 QueryBuilder 组件，集成 React Flow 画布
-- [ ] 3.1.2 实现 `TableNode` 自定义节点（显示表名、列 checkbox、列类型）
-- [ ] 3.1.3 实现从数据库树拖拽表到画布
-- [ ] 3.1.4 实现 `JoinEdge` 自定义连线（可点击切换 JOIN 类型）
-- [ ] 3.1.5 实现自动检测 FK 关系并添加 JOIN
-- [ ] 3.1.6 实现手动拖拽字段建立 JOIN
+- [x] 3.1.1 创建 QueryBuilder 组件，集成 React Flow 画布
+- [x] 3.1.2 实现 `TableNode` 自定义节点（显示表名、列 checkbox、列类型）
+- [x] 3.1.3 实现从数据库树拖拽表到画布
+- [x] 3.1.4 实现 `JoinEdge` 自定义连线（可点击切换 JOIN 类型）
+- [x] 3.1.5 实现自动检测 FK 关系并添加 JOIN
+- [x] 3.1.6 实现手动拖拽字段建立 JOIN
 
 ### 3.2 查询构建器 — SQL 生成
 
-- [ ] 3.2.1 实现 `QueryGraph` 中间结构（拓扑排序）
-- [ ] 3.2.2 实现 `SQLBuilder` 从 QueryGraph 生成 SQL
-- [ ] 3.2.3 支持 SELECT 字段选择、WHERE 条件、ORDER BY、GROUP BY、HAVING
-- [ ] 3.2.4 支持 JOIN 类型切换（INNER/LEFT/RIGHT/FULL/CROSS）
-- [ ] 3.2.5 实现 SQL 预览（CodeMirror 只读视图）
-- [ ] 3.2.6 实现"执行"和"发送到编辑器"按钮
-- [ ] 3.2.7 实现查询构建器状态持久化（切换 Tab 不丢失）
+- [x] 3.2.1 实现 `QueryGraph` 中间结构（拓扑排序）
+- [x] 3.2.2 实现 `SQLBuilder` 从 QueryGraph 生成 SQL
+- [x] 3.2.3 支持 SELECT 字段选择、WHERE 条件、ORDER BY、GROUP BY、HAVING
+- [x] 3.2.4 支持 JOIN 类型切换（INNER/LEFT/RIGHT/FULL/CROSS）
+- [x] 3.2.5 实现 SQL 预览（CodeMirror 只读视图）
+- [x] 3.2.6 实现"执行"和"发送到编辑器"按钮
+- [x] 3.2.7 实现查询构建器状态持久化（切换 Tab 不丢失）
 
 ---
 

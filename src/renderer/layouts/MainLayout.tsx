@@ -9,7 +9,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   CodeOutlined,
-  FolderOutlined
+  FolderOutlined,
+  ApartmentOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '../stores/uiStore'
@@ -22,6 +23,7 @@ import SqlEditor from '../components/sql-editor/SqlEditor'
 import { useEditorStore } from '../stores/editorStore'
 import { useLogStore } from '../stores/logStore'
 import SqlLogPanel from '../components/sql-log/SqlLogPanel'
+import QueryBuilder from '../components/query-builder/QueryBuilder'
 import { useTheme, type ThemeMode } from '../hooks/useTheme'
 import { setLanguage, getCurrentLanguage } from '../i18n'
 import { connectionApi } from '../services/api'
@@ -105,6 +107,40 @@ const MainLayout: React.FC = () => {
           />
         )
       }
+      case 'query-builder': {
+        const connections = useConnectionStore.getState().connections
+        const conn = connections.find((c) => c.id === tab.connId)
+        const dbType = conn?.type || 'mysql'
+        return (
+          <QueryBuilder
+            connId={tab.connId}
+            schema={tab.schema}
+            dbType={dbType}
+            onExecute={(sql) => {
+              // Execute directly and show in a new data tab
+              // For now, open a query tab with the SQL
+              const queryTabKey = `query-${Date.now()}`
+              useUIStore.getState().openTab({
+                key: queryTabKey,
+                title: 'Query',
+                type: 'query',
+                connId: tab.connId
+              })
+              window.dispatchEvent(new CustomEvent('dbview:execute-sql', { detail: { connId: tab.connId, sql } }))
+            }}
+            onSendToEditor={(sql) => {
+              const queryTabKey = `query-${Date.now()}`
+              useUIStore.getState().openTab({
+                key: queryTabKey,
+                title: 'Query',
+                type: 'query',
+                connId: tab.connId
+              })
+              window.dispatchEvent(new CustomEvent('dbview:send-sql', { detail: { sql } }))
+            }}
+          />
+        )
+      }
       default:
         return null
     }
@@ -168,6 +204,24 @@ const MainLayout: React.FC = () => {
                 }}
               />
             </Tooltip>
+            <Tooltip title={t('queryBuilder.open')} placement="right">
+              <Button
+                type="text"
+                size="small"
+                icon={<ApartmentOutlined />}
+                onClick={() => {
+                  const activeConnId = useConnectionStore.getState().activeConnectionId
+                  if (activeConnId) {
+                    useUIStore.getState().openTab({
+                      key: `qb-${activeConnId}`,
+                      title: t('queryBuilder.title'),
+                      type: 'query-builder',
+                      connId: activeConnId
+                    })
+                  }
+                }}
+              />
+            </Tooltip>
           </div>
         ) : (
           <>
@@ -197,6 +251,24 @@ const MainLayout: React.FC = () => {
                   {t('connection.title')}
                 </Typography.Text>
                 <div style={{ display: 'flex', gap: 2 }}>
+                  <Tooltip title={t('queryBuilder.open')}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ApartmentOutlined />}
+                      onClick={() => {
+                        const activeConnId = useConnectionStore.getState().activeConnectionId
+                        if (activeConnId) {
+                          useUIStore.getState().openTab({
+                            key: `qb-${activeConnId}`,
+                            title: t('queryBuilder.title'),
+                            type: 'query-builder',
+                            connId: activeConnId
+                          })
+                        }
+                      }}
+                    />
+                  </Tooltip>
                   <Tooltip title={t('connection.create')}>
                     <Button
                       type="text"
