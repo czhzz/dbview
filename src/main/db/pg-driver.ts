@@ -327,6 +327,66 @@ export class PostgreSQLDriver implements DatabaseDriver {
     return result.rows[0]?.definition || ''
   }
 
+  // v0.3.0: Query profiling
+  async explainQuery(sql: string, _schema?: string): Promise<UnifiedExplainPlan> {
+    const pool = this.getPool()
+    const result = await pool.query('EXPLAIN (ANALYZE, FORMAT JSON) ' + sql)
+    const plan = result.rows[0]?.['QUERY PLAN']
+    const parsed = typeof plan === 'string' ? JSON.parse(plan) : plan
+    return this.parsePgExplain(parsed[0])
+  }
+
+  private parsePgExplain(node: any): UnifiedExplainPlan {
+    const plan = node.Plan || node
+    const children: UnifiedExplainPlan[] = []
+
+    if (plan.Plans) {
+      for (const child of plan.Plans) {
+        children.push(this.parsePgExplain(child))
+      }
+    }
+
+    return {
+      operation: `${plan['Node Type']}${plan['Relation Name'] ? ` (${plan['Relation Name']})` : ''}`,
+      nodeType: this.pgNodeType(plan['Node Type']),
+      estimatedRows: Number(plan['Plan Rows'] || 0),
+      estimatedCost: Number(plan['Total Cost'] || 0),
+      actualRows: Number(plan['Actual Rows']),
+      actualTime: Number(plan['Actual Total Time']),
+      details: {
+        nodeType: plan['Node Type'],
+        relation: plan['Relation Name'],
+        alias: plan['Alias'],
+        startupCost: plan['Startup Cost'],
+        totalCost: plan['Total Cost'],
+        planRows: plan['Plan Rows'],
+        planWidth: plan['Plan Width'],
+        joinType: plan['Join Type'],
+        indexName: plan['Index Name'],
+        indexCond: plan['Index Cond'],
+        filter: plan['Filter'],
+        sortKey: plan['Sort Key'],
+        groupKey: plan['Group Key'],
+        hashCond: plan['Hash Cond'],
+        mergeCond: plan['Merge Cond']
+      },
+      children
+    }
+  }
+
+  private pgNodeType(type: string): string {
+    const scanTypes = ['Seq Scan', 'Index Scan', 'Index Only Scan', 'Bitmap Heap Scan', 'Bitmap Index Scan', 'CTE Scan', 'Subquery Scan', 'Function Scan', 'Values Scan']
+    const joinTypes = ['Nested Loop', 'Hash Join', 'Merge Join']
+    const sortTypes = ['Sort', 'Incremental Sort']
+    const aggTypes = ['Aggregate', 'GroupAggregate', 'HashAggregate', 'PlainAggregate']
+
+    if (scanTypes.includes(type)) return 'scan'
+    if (joinTypes.includes(type)) return 'join'
+    if (sortTypes.includes(type)) return 'sort'
+    if (aggTypes.includes(type)) return 'aggregate'
+    return 'other'
+  }
+
   async getUsers(_schema?: string): Promise<UserInfo[]> {
     const result = await this.getPool().query<{ usename: string }>(
       'SELECT usename FROM pg_user ORDER BY usename'

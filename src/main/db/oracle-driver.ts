@@ -313,6 +313,63 @@ export class OracleDriver implements DatabaseDriver {
     return result.rows ? result.rows.map((r) => r.text).join('') : ''
   }
 
+  // v0.3.0: Query profiling
+  async explainQuery(sql: string, schema?: string): Promise<UnifiedExplainPlan> {
+    // Oracle: EXPLAIN PLAN FOR + DBMS_XPLAN.DISPLAY
+    const planTable = 'PLAN_TABLE'
+    await this.getPool().execute(`EXPLAIN PLAN SET STATEMENT_ID = 'EXPLAIN_TEMP' FOR ${sql}`)
+    const result = await this.getPool().execute<{ operation: string; options: string; object_name: string; cost: number; cardinality: number; id: number; parent_id: number }>(
+      `SELECT operation, options, object_name, cost, cardinality, id, parent_id
+       FROM ${planTable}
+       WHERE statement_id = 'EXPLAIN_TEMP'
+       START WITH id = 0
+       CONNECT BY PRIOR id = parent_id
+       ORDER BY id`
+    )
+    const rows = result.rows || []
+    return this.parseOracleExplain(rows)
+  }
+
+  private parseOracleExplain(rows: any[]): UnifiedExplainPlan {
+    if (rows.length === 0) {
+      return { operation: 'EXPLAIN PLAN', nodeType: 'explain', estimatedRows: 0, estimatedCost: 0, details: {}, children: [] }
+    }
+
+    const nodeMap = new Map<number, UnifiedExplainPlan>()
+    const childrenMap = new Map<number, number[]>()
+
+    for (const row of rows) {
+      const id = Number(row.id)
+      const parentId = row.parent_id !== null ? Number(row.parent_id) : -1
+      const opName = [row.operation, row.options].filter(Boolean).join(' ')
+      const tableName = row.object_name || ''
+
+      nodeMap.set(id, {
+        operation: `${opName}${tableName ? ` (${tableName})` : ''}`,
+        nodeType: row.operation?.toLowerCase().includes('scan') ? 'scan' : row.operation?.toLowerCase().includes('join') ? 'join' : 'other',
+        estimatedRows: Number(row.cardinality || 0),
+        estimatedCost: Number(row.cost || 0),
+        details: { operation: row.operation, options: row.options, objectName: row.object_name },
+        children: []
+      })
+
+      if (parentId >= 0) {
+        if (!childrenMap.has(parentId)) childrenMap.set(parentId, [])
+        childrenMap.get(parentId)!.push(id)
+      }
+    }
+
+    // Build tree
+    for (const [pid, cids] of childrenMap) {
+      const parent = nodeMap.get(pid)
+      if (parent) {
+        parent.children = cids.map((id) => nodeMap.get(id)!).filter(Boolean)
+      }
+    }
+
+    return nodeMap.get(0) || nodeMap.values().next().value
+  }
+
   async getUsers(_schema?: string): Promise<UserInfo[]> {
     const result = await this.getPool().execute<{ username: string }>(
       'SELECT username FROM all_users ORDER BY username'

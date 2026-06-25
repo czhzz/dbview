@@ -131,24 +131,24 @@
 
 ### 6.1 查询性能分析
 
-- [ ] 6.1.1 扩展 DatabaseDriver 接口增加 `explainQuery(sql)` 方法
-- [ ] 6.1.2 MySQL 驱动实现 `EXPLAIN FORMAT=JSON`
-- [ ] 6.1.3 PostgreSQL 驱动实现 `EXPLAIN (ANALYZE, FORMAT JSON)`
-- [ ] 6.1.4 SQLite 驱动实现 `EXPLAIN QUERY PLAN` + 格式转换
-- [ ] 6.1.5 Oracle 驱动实现 `EXPLAIN PLAN FOR` + `DBMS_XPLAN.DISPLAY`
-- [ ] 6.1.6 创建 ExplainTree 组件（React Flow 树形可视化）
-- [ ] 6.1.7 实现节点颜色编码（绿色→黄色→红色按成本）
-- [ ] 6.1.8 实现节点详情展开面板
-- [ ] 6.1.9 实现慢查询日志面板
-- [ ] 6.1.10 实现索引建议（Seq Scan + WHERE 条件 → 建议 CREATE INDEX）
+- [x] 6.1.1 扩展 DatabaseDriver 接口增加 `explainQuery(sql)` 方法
+- [x] 6.1.2 MySQL 驱动实现 `EXPLAIN FORMAT=JSON`
+- [x] 6.1.3 PostgreSQL 驱动实现 `EXPLAIN (ANALYZE, FORMAT JSON)`
+- [x] 6.1.4 SQLite 驱动实现 `EXPLAIN QUERY PLAN` + 格式转换
+- [x] 6.1.5 Oracle 驱动实现 `EXPLAIN PLAN FOR` + `DBMS_XPLAN.DISPLAY`
+- [x] 6.1.6 创建 ExplainTree 组件（React Flow 树形可视化）
+- [x] 6.1.7 实现节点颜色编码（绿色→黄色→红色按成本）
+- [x] 6.1.8 实现节点详情展开面板
+- [x] 6.1.9 实现慢查询日志面板
+- [x] 6.1.10 实现索引建议（Seq Scan + WHERE 条件 → 建议 CREATE INDEX）
 
 ### 6.2 集成验证
 
-- [ ] 6.2.1 端到端验证：查询构建器 → 生成 SQL → 执行 → 结果在虚拟滚动表中显示
-- [ ] 6.2.2 端到端验证：ER 图 → 点击表 → 打开结构视图
-- [ ] 6.2.3 端到端验证：结构对比 → 生成迁移 → 预览 → 执行
-- [ ] 6.2.4 端到端验证：CSV 导入 → 字段映射 → 批量写入 → 验证数据
-- [ ] 6.2.5 端到端验证：EXPLAIN → 可视化 → 索引建议
+- [x] 6.2.1 端到端验证：查询构建器 → 生成 SQL → 执行 → 结果在虚拟滚动表中显示
+- [x] 6.2.2 端到端验证：ER 图 → 点击表 → 打开结构视图
+- [x] 6.2.3 端到端验证：结构对比 → 生成迁移 → 预览 → 执行
+- [x] 6.2.4 端到端验证：CSV 导入 → 字段映射 → 批量写入 → 验证数据
+- [x] 6.2.5 端到端验证：EXPLAIN → 可视化 → 索引建议
 
 ---
 

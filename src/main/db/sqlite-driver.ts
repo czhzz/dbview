@@ -189,6 +189,55 @@ export class SQLiteDriver implements DatabaseDriver {
     return ''
   }
 
+  // v0.3.0: Query profiling
+  async explainQuery(sql: string, _schema?: string): Promise<UnifiedExplainPlan> {
+    const db = this.getDb()
+    const rows = db.prepare('EXPLAIN QUERY PLAN ' + sql).all() as any[]
+    return this.parseSqliteExplain(rows)
+  }
+
+  private parseSqliteExplain(rows: any[]): UnifiedExplainPlan {
+    // SQLite EXPLAIN QUERY PLAN returns flat rows with id, parent, detail
+    // Build tree structure from parent references
+    const nodeMap = new Map<number, UnifiedExplainPlan>()
+    const children = new Map<number, number[]>()
+
+    for (const row of rows) {
+      const id = Number(row.id)
+      const parent = Number(row.parent)
+      const detail = String(row.detail)
+
+      nodeMap.set(id, {
+        operation: detail,
+        nodeType: 'scan',
+        estimatedRows: 0,
+        estimatedCost: 0,
+        details: { id, parent },
+        children: []
+      })
+
+      if (!children.has(parent)) children.set(parent, [])
+      children.get(parent)!.push(id)
+    }
+
+    // Build tree
+    for (const [parentId, childIds] of children) {
+      const parent = nodeMap.get(parentId)
+      if (parent) {
+        parent.children = childIds.map((id) => nodeMap.get(id)!).filter(Boolean)
+      }
+    }
+
+    return nodeMap.get(0) || {
+      operation: 'EXPLAIN QUERY PLAN',
+      nodeType: 'explain',
+      estimatedRows: 0,
+      estimatedCost: 0,
+      details: {},
+      children: []
+    }
+  }
+
   async getUsers(_schema?: string): Promise<UserInfo[]> {
     // SQLite does not have user accounts
     return []

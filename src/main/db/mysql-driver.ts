@@ -348,6 +348,38 @@ export class MySQLDriver implements DatabaseDriver {
     return String(rows[0]?.ROUTINE_DEFINITION || '')
   }
 
+  // v0.3.0: Query profiling
+  async explainQuery(sql: string, _schema?: string): Promise<UnifiedExplainPlan> {
+    const pool = this.getPool()
+    const [rows] = await pool.query<RowDataPacket[]>('EXPLAIN FORMAT=JSON ' + sql)
+    const explainJson = rows[0] as Record<string, any>
+    return this.parseMysqlExplain(explainJson)
+  }
+
+  private parseMysqlExplain(json: Record<string, any>): UnifiedExplainPlan {
+    const queryBlock = json.query_block || json
+    const node: UnifiedExplainPlan = {
+      operation: (queryBlock.select_type || queryBlock.operation_type || 'QUERY') + ' (' + (queryBlock.table || '') + ')',
+      nodeType: queryBlock.select_type === 'SIMPLE' ? 'scan' : 'query',
+      estimatedRows: Number(queryBlock.rows || 0),
+      estimatedCost: Number(queryBlock.cost_info?.query_cost || queryBlock.cost || 0),
+      details: { selectType: queryBlock.select_type, table: queryBlock.table, type: queryBlock.access_type, possibleKeys: queryBlock.possible_keys, key: queryBlock.key, keyLen: queryBlock.key_len, ref: queryBlock.ref, extra: queryBlock.Extra || queryBlock.attached_condition },
+      children: []
+    }
+
+    // Nested loop joins have nested_loop children
+    if (queryBlock.nested_loop) {
+      node.children = queryBlock.nested_loop.map((nl: any) => this.parseMysqlExplain(nl.table || nl))
+    }
+
+    // Materialized subqueries
+    if (queryBlock.materialized_from_subquery) {
+      node.children.push(this.parseMysqlExplain(queryBlock.materialized_from_subquery))
+    }
+
+    return node
+  }
+
   async getUsers(_schema?: string): Promise<UserInfo[]> {
     try {
       const [rows] = await this.getPool().query<RowDataPacket[]>(

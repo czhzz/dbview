@@ -135,6 +135,36 @@ export class DriverLogger implements DatabaseDriver {
     return this.wrapMetadata('getUsers', () => this.driver.getUsers(schema), { schema })
   }
 
+  // v0.3.0: Query profiling
+  async explainQuery(sql: string, schema?: string): Promise<UnifiedExplainPlan> {
+    const start = Date.now()
+    try {
+      const result = await this.driver.explainQuery(sql, schema)
+      this.logService.log({
+        sql: `EXPLAIN ${sql.substring(0, 100)}`,
+        connId: this.connId,
+        category: 'metadata',
+        source: 'explainQuery',
+        executionTime: Date.now() - start,
+        rowCount: 1,
+        status: 'success'
+      })
+      return result
+    } catch (e: any) {
+      this.logService.log({
+        sql: `EXPLAIN ${sql.substring(0, 100)}`,
+        connId: this.connId,
+        category: 'metadata',
+        source: 'explainQuery',
+        executionTime: Date.now() - start,
+        rowCount: 0,
+        status: 'error',
+        error: e?.message ?? String(e)
+      })
+      throw e
+    }
+  }
+
   private async wrapMetadata<T>(
     method: string,
     fn: () => Promise<T>,

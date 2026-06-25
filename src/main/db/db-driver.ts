@@ -1,5 +1,5 @@
 import type { ConnectionConfig } from '../../renderer/types/connection'
-import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, UserInfo, PaginationQuery, PaginationResult, SQLResult } from '../../renderer/types/database'
+import type { TableInfo, ViewInfo, ColumnInfo, IndexInfo, UserInfo, PaginationQuery, PaginationResult, SQLResult, UnifiedExplainPlan } from '../../renderer/types/database'
 
 export interface RoutineInfo {
   name: string
@@ -29,5 +29,8 @@ export interface DatabaseDriver {
   // Data operations
   executeQuery(sql: string, params?: unknown[], signal?: AbortSignal): Promise<SQLResult>
   queryPage(table: string, options: PaginationQuery): Promise<PaginationResult>
+
+  // v0.3.0: Query profiling
+  explainQuery(sql: string, schema?: string): Promise<UnifiedExplainPlan>
 }
 export type { ConnectionConfig, TableInfo, ViewInfo, ColumnInfo, IndexInfo, UserInfo, PaginationQuery, PaginationResult, SQLResult }
