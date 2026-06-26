@@ -227,13 +227,14 @@ const MainLayout: React.FC = () => {
                 size="small"
                 icon={<ApartmentOutlined />}
                 onClick={() => {
-                  const activeConnId = useConnectionStore.getState().activeConnectionId
-                  if (activeConnId) {
+                  const { activeConnectionId, connectedIds, connections } = useConnectionStore.getState()
+                  const connId = activeConnectionId || connectedIds.values().next().value || connections[0]?.id
+                  if (connId) {
                     useUIStore.getState().openTab({
-                      key: `qb-${activeConnId}`,
+                      key: `qb-${connId}`,
                       title: t('queryBuilder.title'),
                       type: 'query-builder',
-                      connId: activeConnId
+                      connId
                     })
                   }
                 }}
@@ -274,13 +275,14 @@ const MainLayout: React.FC = () => {
                       size="small"
                       icon={<ApartmentOutlined />}
                       onClick={() => {
-                        const activeConnId = useConnectionStore.getState().activeConnectionId
-                        if (activeConnId) {
+                        const { activeConnectionId, connectedIds, connections } = useConnectionStore.getState()
+                        const connId = activeConnectionId || connectedIds.values().next().value || connections[0]?.id
+                        if (connId) {
                           useUIStore.getState().openTab({
-                            key: `qb-${activeConnId}`,
+                            key: `qb-${connId}`,
                             title: t('queryBuilder.title'),
                             type: 'query-builder',
-                            connId: activeConnId
+                            connId
                           })
                         }
                       }}
@@ -292,13 +294,14 @@ const MainLayout: React.FC = () => {
                       size="small"
                       icon={<DeploymentUnitOutlined />}
                       onClick={() => {
-                        const activeConnId = useConnectionStore.getState().activeConnectionId
-                        if (activeConnId) {
+                        const { activeConnectionId, connectedIds, connections } = useConnectionStore.getState()
+                        const connId = activeConnectionId || connectedIds.values().next().value || connections[0]?.id
+                        if (connId) {
                           useUIStore.getState().openTab({
-                            key: `er-${activeConnId}`,
+                            key: `er-${connId}`,
                             title: t('erDiagram.title'),
                             type: 'er-diagram',
-                            connId: activeConnId
+                            connId
                           })
                         }
                       }}
