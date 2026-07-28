@@ -53,7 +53,11 @@ export class PostgreSQLDriver implements DatabaseDriver {
 
   async closePool(): Promise<void> {
     if (this.pool) {
-      await this.pool.end()
+      try {
+        await this.pool.end()
+      } catch {
+        // pool may already be closed — ignore
+      }
       this.pool = null
       this.config = null
     }

@@ -45,7 +45,11 @@ export class OracleDriver implements DatabaseDriver {
 
   async closePool(): Promise<void> {
     if (this.pool) {
-      await this.pool.close()
+      try {
+        await this.pool.close()
+      } catch {
+        // pool may already be closed — ignore
+      }
       this.pool = null
       this.config = null
     }

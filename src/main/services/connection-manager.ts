@@ -84,7 +84,11 @@ export class ConnectionManager {
     if (entry) {
       if (entry.heartbeatTimer) clearInterval(entry.heartbeatTimer)
       if (entry.reconnectTimer) clearTimeout(entry.reconnectTimer)
-      await entry.driver.closePool()
+      try {
+        await entry.driver.closePool()
+      } catch {
+        // closePool may fail if pool is already closed — clean up state anyway
+      }
       this.pools.delete(connId)
     }
   }
@@ -99,16 +103,17 @@ export class ConnectionManager {
   }
 
   async closeAll(): Promise<void> {
+    // Stop idle checker first to prevent races
+    if (this.idleTimer) {
+      clearInterval(this.idleTimer)
+      this.idleTimer = null
+    }
     // Cancel all active queries
     for (const [qid] of this.activeQueries) {
       this.cancelQuery(qid)
     }
     for (const [id] of this.pools) {
       await this.disconnect(id)
-    }
-    if (this.idleTimer) {
-      clearInterval(this.idleTimer)
-      this.idleTimer = null
     }
   }
 
